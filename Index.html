@@ -27,13 +27,38 @@
         }
         .nav-btn { transition: all 0.2s; }
         .email-preview { font-family: 'Courier New', Courier, monospace; line-height: 1.5; }
+        input[type="number"]::-webkit-inner-spin-button, 
+        input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+
+        /* Suggestion Dropdown Styling */
+        .suggestion-box {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            z-index: 100;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .suggestion-item {
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            border-bottom: 1px solid #f1f5f9;
+            transition: background 0.2s;
+        }
+        .suggestion-item:last-child { border-bottom: none; }
+        .suggestion-item:hover { background: #f8fafc; }
     </style>
 </head>
 <body class="bg-[#F1F5F9] text-slate-900 overflow-hidden">
 
     <!-- Confirmation Modal -->
     <div id="confirm-modal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[1100] flex items-center justify-center p-4">
-        <div class="bg-white rounded-[2.5rem] p-8 max-w-sm w-full shadow-2xl border border-slate-100">
+        <div class="bg-white rounded-[2.5rem] p-8 max-sm w-full shadow-2xl border border-slate-100">
             <div class="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-6 mx-auto">
                 <i class="fas fa-exclamation-triangle text-red-500 text-2xl"></i>
             </div>
@@ -41,8 +66,46 @@
             <p class="text-slate-500 text-sm text-center mb-8 leading-relaxed">This will delete all current records and replace them with the new file data.</p>
             <div class="flex gap-3">
                 <button onclick="closeModal('confirm-modal')" class="flex-1 py-4 rounded-2xl font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 transition-all">Cancel</button>
-                <button onclick="triggerImport()" class="flex-1 py-4 rounded-2xl font-bold text-white bg-red-500 hover:bg-red-600 shadow-lg shadow-red-200 transition-all">Confirm</button>
+                <button onclick="document.getElementById('csvFile').click()" class="flex-1 py-4 rounded-2xl font-bold text-white bg-red-500 hover:bg-red-600 shadow-lg shadow-red-200 transition-all">Confirm</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Manual Add Item Modal -->
+    <div id="add-item-modal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[1100] flex items-center justify-center p-4">
+        <div class="bg-white rounded-[2.5rem] p-8 max-w-md w-full shadow-2xl border border-slate-100">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-black text-slate-800">Add New Item</h3>
+                <button onclick="closeModal('add-item-modal')" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times"></i></button>
+            </div>
+            <form id="manual-add-form" class="space-y-4">
+                <div class="relative">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Description <span class="text-blue-600">*</span></label>
+                    <input type="text" id="new-desc" required autocomplete="off" class="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-blue-500 font-medium text-sm" placeholder="e.g. Bread White Sliced 700g">
+                    <div id="desc-suggestions" class="suggestion-box hidden custom-scrollbar"></div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Dept (Optional)</label>
+                        <input type="text" id="new-dept" class="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-blue-500 font-medium text-sm" placeholder="e.g. 4020">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">SKU Code (Optional)</label>
+                        <input type="text" id="new-code" class="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-blue-500 font-medium text-sm" placeholder="e.g. 104522">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Supplier <span class="text-blue-600">*</span></label>
+                    <input type="text" id="new-supplier" required class="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-blue-500 font-medium text-sm" placeholder="e.g. Cadell or Bidfood">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Current Price ($) <span class="text-blue-600">*</span></label>
+                    <input type="number" step="0.01" id="new-price" required class="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-blue-500 font-medium text-sm" placeholder="0.00">
+                </div>
+                <div class="pt-4">
+                    <button type="submit" id="submit-item-btn" class="w-full bg-[#004a99] text-white font-bold py-4 rounded-2xl hover:bg-blue-700 transition-all shadow-lg">Save to Inventory</button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -97,8 +160,11 @@
             </div>
 
             <div class="space-y-2 pt-6 border-t border-slate-800">
+                <button onclick="openModal('add-item-modal')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-blue-500/10 text-blue-400 text-[11px] font-bold hover:bg-blue-500/20 transition-all">
+                    <i class="fas fa-plus-circle"></i> Add New Item
+                </button>
                 <button onclick="openModal('confirm-modal')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-emerald-500/10 text-emerald-400 text-[11px] font-bold hover:bg-emerald-500/20 transition-all">
-                    <i class="fas fa-cloud-upload-alt"></i> Update Records (CSV)
+                    <i class="fas fa-cloud-upload-alt"></i> Import CSV
                 </button>
                 <button onclick="logout()" class="w-full flex items-center gap-3 px-4 py-2 text-[11px] font-bold text-red-400 hover:text-red-300 transition-colors">
                     <i class="fas fa-power-off"></i> Sign Out
@@ -198,6 +264,7 @@
                                     <th class="px-8 py-5">Description</th>
                                     <th class="px-8 py-5 w-32 text-right">Prev Price</th>
                                     <th class="px-8 py-5 w-40 text-right">Current Price</th>
+                                    <th class="px-8 py-5 w-16"></th>
                                 </tr>
                             </thead>
                             <tbody id="inventoryTableBody" class="divide-y divide-slate-100"></tbody>
@@ -214,7 +281,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot, writeBatch, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot, writeBatch, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyDf9OTFNhj6W4yrIvU6mZythz2yK-GgAu0",
@@ -234,15 +301,14 @@
         window.filteredData = [];
         window.visibleCount = 60;
         window.chartInstance = null;
-        let currentUser = null;
+        let activeDocId = null;
 
-        // Auth
         document.getElementById('login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const u = document.getElementById('username').value;
             const p = document.getElementById('password').value;
             if (u === "admin" && p === "admin123") {
-                showLoader("Connecting...");
+                showLoader("Connecting to Cloud...");
                 try {
                     await signInAnonymously(auth);
                     document.getElementById('login-screen').style.display = 'none';
@@ -254,7 +320,6 @@
 
         onAuthStateChanged(auth, (user) => {
             if (user) {
-                currentUser = user;
                 checkDailyRollover();
                 listenToInventory();
             }
@@ -265,7 +330,7 @@
             const metaDoc = await getDoc(metaRef);
             const today = new Date().toISOString().split('T')[0];
             if (!metaDoc.exists() || metaDoc.data().lastRollover !== today) {
-                showLoader("Rolling over prices...");
+                showLoader("Daily Price Update...");
                 const snapshot = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'stock'));
                 const docs = snapshot.docs;
                 for (let i = 0; i < docs.length; i += 450) {
@@ -291,58 +356,129 @@
             });
         }
 
-        window.copyEmailToClipboard = () => {
-            const subject = document.getElementById('email-subject-display').innerText;
-            const body = document.getElementById('email-body-display').innerText;
-            const fullText = `Subject: ${subject}\n\n${body}`;
-            
-            const el = document.createElement('textarea');
-            el.value = fullText;
-            document.body.appendChild(el);
-            el.select();
-            document.execCommand('copy');
-            document.body.removeChild(el);
+        // --- Auto-Suggest Logic ---
+        const descInput = document.getElementById('new-desc');
+        const suggestBox = document.getElementById('desc-suggestions');
+        const submitBtn = document.getElementById('submit-item-btn');
 
-            const btn = document.getElementById('copy-btn-text');
-            btn.innerText = "Copied!";
-            setTimeout(() => btn.innerText = "Copy All Text", 2000);
-        };
+        descInput.addEventListener('input', (e) => {
+            const val = e.target.value.toLowerCase();
+            suggestBox.innerHTML = '';
+            activeDocId = null;
+            submitBtn.innerText = "Save to Inventory";
 
-        function generateEmailDraft() {
-            const today = new Date().toLocaleDateString('en-AU', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-            const hikes = window.inventory.filter(i => i.newCost > i.prevCost)
-                .map(i => ({...i, perc: ((i.newCost - i.prevCost) / (i.prevCost || 1)) * 100}))
-                .sort((a, b) => b.perc - a.perc);
-
-            const subject = `GV Health Inventory: Price Update Report - ${today}`;
-            document.getElementById('email-subject-display').innerText = subject;
-
-            if (hikes.length === 0) {
-                document.getElementById('email-body-display').innerText = "Dear Team,\r\n\r\nNo price variations were detected for today's inventory check.\r\n\r\nRegards,\r\nGV Health Inventory Portal";
+            if (val.length < 2) {
+                suggestBox.classList.add('hidden');
                 return;
             }
 
-            let body = `Dear Team,\r\n\r\nPlease find the daily inventory price variance report for ${today}.\r\n\r\n`;
-            body += `SUMMARY:\r\n- Total Items Monitored: ${window.inventory.length}\r\n- Items with Price Increases: ${hikes.length}\r\n\r\n`;
-            body += `TOP PRICE INCREASES:\r\n`;
-            body += `------------------------------------------------------------\r\n`;
-            
-            hikes.forEach(h => {
-                body += `${h.code} | ${h.description}\r\n`;
-                body += `Supplier: ${h.supplier}\r\n`;
-                body += `Variance: $${h.prevCost.toFixed(2)} -> $${h.newCost.toFixed(2)} (+${h.perc.toFixed(1)}%)\r\n`;
-                body += `------------------------------------------------------------\r\n`;
-            });
+            const matches = window.inventory.filter(i => 
+                (i.description || '').toLowerCase().includes(val) || 
+                (i.code || '').toLowerCase().includes(val)
+            ).slice(0, 5);
 
-            body += `\r\nThis report was automatically generated from the Inventory Portal.\r\n\r\nRegards,\r\nGV Health Inventory Management`;
-            document.getElementById('email-body-display').innerText = body;
+            if (matches.length > 0) {
+                suggestBox.classList.remove('hidden');
+                matches.forEach(m => {
+                    const div = document.createElement('div');
+                    div.className = 'suggestion-item';
+                    div.innerHTML = `
+                        <div class="text-xs font-bold text-slate-800">${m.description}</div>
+                        <div class="text-[9px] text-slate-400 uppercase font-black">${m.supplier} | ${m.code || 'NO SKU'}</div>
+                    `;
+                    div.onclick = () => selectSuggestion(m);
+                    suggestBox.appendChild(div);
+                });
+            } else {
+                suggestBox.classList.add('hidden');
+            }
+        });
+
+        function selectSuggestion(item) {
+            descInput.value = item.description;
+            document.getElementById('new-dept').value = item.costCentre === '-' ? '' : item.costCentre;
+            document.getElementById('new-code').value = item.code;
+            document.getElementById('new-supplier').value = item.supplier;
+            document.getElementById('new-price').value = item.newCost;
+            activeDocId = item.docId;
+            submitBtn.innerText = "Update Existing Item";
+            suggestBox.classList.add('hidden');
         }
+
+        document.getElementById('manual-add-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            showLoader("Syncing item...");
+            
+            const cost = parseFloat(document.getElementById('new-price').value) || 0;
+            const data = {
+                costCentre: document.getElementById('new-dept').value || '-',
+                code: document.getElementById('new-code').value || '',
+                description: document.getElementById('new-desc').value,
+                supplier: document.getElementById('new-supplier').value,
+                newCost: cost,
+                updatedAt: Date.now()
+            };
+
+            try {
+                if (activeDocId) {
+                    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'stock', activeDocId), data, { merge: true });
+                } else {
+                    const stockRef = collection(db, 'artifacts', appId, 'public', 'data', 'stock');
+                    await setDoc(doc(stockRef), { ...data, prevCost: cost, idx: window.inventory.length });
+                }
+                closeModal('add-item-modal');
+                e.target.reset();
+                activeDocId = null;
+            } catch (err) {
+                alert("Cloud sync failed.");
+            } finally {
+                hideLoader();
+            }
+        });
+
+        window.processCSV = async (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+            showLoader("Processing file...");
+            closeModal('confirm-modal');
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const text = e.target.result;
+                const rows = text.split('\n').slice(1);
+                const snapshot = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'stock'));
+                for (let i = 0; i < snapshot.docs.length; i += 450) {
+                    const dBatch = writeBatch(db);
+                    snapshot.docs.slice(i, i + 450).forEach(d => dBatch.delete(d.ref));
+                    await dBatch.commit();
+                }
+                for (let i = 0; i < rows.length; i += 450) {
+                    const iBatch = writeBatch(db);
+                    rows.slice(i, i + 450).forEach((row, idxInBatch) => {
+                        const cols = row.split(',').map(c => c.trim().replace(/^"|"$/g, ''));
+                        if (cols.length < 4) return;
+                        const price = parseFloat(cols[3]) || 0;
+                        iBatch.set(doc(collection(db, 'artifacts', appId, 'public', 'data', 'stock')), {
+                            costCentre: cols[0], code: cols[1], description: cols[2],
+                            prevCost: price, newCost: price, supplier: cols[4] || 'Unknown',
+                            idx: i + idxInBatch, updatedAt: Date.now()
+                        });
+                    });
+                    await iBatch.commit();
+                }
+                hideLoader();
+            };
+            reader.readAsText(file);
+        };
 
         window.updatePrice = async (docId, val) => {
             const price = parseFloat(val) || 0;
             const item = window.inventory.find(i => i.docId === docId);
             if (!item || item.newCost === price) return;
-            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'stock', docId), { ...item, newCost: price, updatedAt: Date.now() }, { merge: true });
+            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'stock', docId), { newCost: price, updatedAt: Date.now() }, { merge: true });
+        };
+
+        window.deleteItem = async (docId) => {
+            if(confirm("Delete this item?")) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'stock', docId));
         };
 
         window.handleSearch = () => {
@@ -358,17 +494,20 @@
         function renderTable() {
             const tbody = document.getElementById('inventoryTableBody');
             tbody.innerHTML = window.filteredData.slice(0, window.visibleCount).map(item => `
-                <tr class="hover:bg-slate-50">
+                <tr class="hover:bg-slate-50 transition-colors group">
                     <td class="px-8 py-4 text-center text-[10px] font-black text-slate-400">${item.costCentre || '-'}</td>
                     <td class="px-8 py-4 font-mono text-xs font-bold">${item.code || '-'}</td>
                     <td class="px-8 py-4">
-                        <div class="text-sm font-bold text-slate-800 truncate">${item.description || '-'}</div>
+                        <div class="text-sm font-bold text-slate-800 truncate" title="${item.description}">${item.description || '-'}</div>
                         <div class="text-[9px] text-slate-400 font-bold uppercase">${item.supplier || '-'}</div>
                     </td>
                     <td class="px-8 py-4 text-right text-xs text-slate-400">$${(item.prevCost || 0).toFixed(2)}</td>
                     <td class="px-8 py-4 text-right">
                         <input type="number" step="0.01" class="w-24 text-right px-2 py-1 rounded-lg border border-slate-200 text-sm font-black focus:border-blue-500 outline-none" 
                         value="${item.newCost}" onblur="updatePrice('${item.docId}', this.value)">
+                    </td>
+                    <td class="px-4 py-4 text-center">
+                        <button onclick="deleteItem('${item.docId}')" class="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"><i class="fas fa-trash-alt text-xs"></i></button>
                     </td>
                 </tr>
             `).join('');
@@ -383,7 +522,7 @@
                 .sort((a, b) => b.perc - a.perc);
 
             document.getElementById('stat-total').innerText = window.inventory.length;
-            document.getElementById('stat-inflation').innerText = prevVal === 0 ? '0%' : `${(((totalVal - prevVal) / prevVal) * 100).toFixed(2)}%`;
+            document.getElementById('stat-inflation').innerText = prevVal === 0 ? '0.00%' : `${(((totalVal - prevVal) / prevVal) * 100).toFixed(2)}%`;
             document.getElementById('stat-value').innerText = `$${totalVal.toLocaleString()}`;
             document.getElementById('stat-increased-count').innerText = hikers.length;
 
@@ -392,21 +531,65 @@
             window.chartInstance = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: hikers.slice(0, 8).map(i => i.code),
-                    datasets: [{ label: 'Hike %', data: hikers.slice(0, 8).map(i => i.perc), backgroundColor: '#ef4444', borderRadius: 8 }]
+                    labels: hikers.slice(0, 8).map(i => i.code || i.description.substring(0,8)),
+                    datasets: [{ label: 'Hike %', data: hikers.slice(0, 8).map(i => i.perc), backgroundColor: '#ef4444', borderRadius: 8, barThickness: 24 }]
                 },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, grid: { display: false } } }, plugins: { legend: { display: false } } }
             });
+            
+            const supCounts = {};
+            hikers.forEach(h => supCounts[h.supplier] = (supCounts[h.supplier] || 0) + 1);
+            const supList = Object.entries(supCounts).sort((a,b) => b[1] - a[1]);
+            document.getElementById('supplier-list').innerHTML = supList.map(([name, count]) => `
+                <div class="flex justify-between items-center p-3 rounded-2xl bg-slate-50 border border-slate-100">
+                    <span class="text-xs font-bold text-slate-700">${name}</span>
+                    <span class="px-3 py-1 bg-amber-100 text-amber-600 text-[10px] font-black rounded-full">${count} Hikes</span>
+                </div>
+            `).join('') || '<p class="text-slate-400 text-xs text-center mt-10">No hikes detected today.</p>';
+        }
+
+        window.copyEmailToClipboard = () => {
+            const subject = document.getElementById('email-subject-display').innerText;
+            const body = document.getElementById('email-body-display').innerText;
+            const el = document.createElement('textarea');
+            el.value = `Subject: ${subject}\n\n${body}`;
+            document.body.appendChild(el); el.select(); document.execCommand('copy'); document.body.removeChild(el);
+            const btn = document.getElementById('copy-btn-text'); btn.innerText = "Copied!"; setTimeout(() => btn.innerText = "Copy All Text", 2000);
+        };
+
+        function generateEmailDraft() {
+            const today = new Date().toLocaleDateString('en-AU', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            const hikes = window.inventory.filter(i => i.newCost > i.prevCost).map(i => ({...i, perc: ((i.newCost - i.prevCost) / (i.prevCost || 1)) * 100})).sort((a, b) => b.perc - a.perc);
+            const subject = `GV Health Inventory: Price Update Report - ${today}`;
+            document.getElementById('email-subject-display').innerText = subject;
+            if (hikes.length === 0) {
+                document.getElementById('email-body-display').innerText = "Dear Team,\r\n\r\nNo price variations were detected for today.\r\n\r\nRegards,\r\nGV Health Inventory Portal";
+                return;
+            }
+            let body = `Dear Team,\r\n\r\nPlease find the price report for ${today}.\r\n\r\nSUMMARY:\r\n- Monitored: ${window.inventory.length}\r\n- Price Increases: ${hikes.length}\r\n\r\nTOP PRICE INCREASES:\r\n------------------------------------------------------------\r\n`;
+            hikes.forEach(h => { body += `${h.code || 'N/A'} | ${h.description}\r\nSupplier: ${h.supplier}\r\nVariance: $${h.prevCost.toFixed(2)} -> $${h.newCost.toFixed(2)} (+${h.perc.toFixed(1)}%)\r\n------------------------------------------------------------\r\n`; });
+            body += `\r\nRegards,\r\nGV Health Inventory Management`;
+            document.getElementById('email-body-display').innerText = body;
         }
 
         window.openModal = (id) => document.getElementById(id).classList.remove('hidden');
-        window.closeModal = (id) => document.getElementById(id).classList.add('hidden');
+        window.closeModal = (id) => { 
+            document.getElementById(id).classList.add('hidden');
+            if(id === 'add-item-modal') {
+                document.getElementById('manual-add-form').reset();
+                activeDocId = null;
+                submitBtn.innerText = "Save to Inventory";
+                suggestBox.classList.add('hidden');
+            }
+        };
         window.switchTab = (t) => {
             const views = ['dashboard', 'inventory', 'email'];
             views.forEach(v => document.getElementById(`view-${v}`).classList.add('hidden'));
             document.getElementById(`view-${t}`).classList.remove('hidden');
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('bg-white/10', 'text-white', 'font-bold'));
             document.getElementById(`btn-${t}`).classList.add('bg-white/10', 'text-white', 'font-bold');
+            document.getElementById('page-title').innerText = { dashboard: 'Analytics Dashboard', inventory: 'Stock Control List', email: 'Reporting Template' }[t];
+            document.getElementById('breadcrumb').innerText = { dashboard: 'Home / Dashboard', inventory: 'Home / Inventory', email: 'Home / Reporting' }[t];
         };
         window.showLoader = (t) => { document.getElementById('loader').classList.remove('hidden'); document.getElementById('loader-text').innerText = t; };
         window.hideLoader = () => document.getElementById('loader').classList.add('hidden');
@@ -416,6 +599,13 @@
             document.getElementById('supplierFilter').innerHTML = sups.map(s => `<option value="${s}">${s}</option>`).join('');
         }
         document.getElementById('loadMore').addEventListener('click', () => { window.visibleCount += 60; renderTable(); });
+
+        // Close suggestions if clicking outside
+        document.addEventListener('click', (e) => {
+            if (!descInput.contains(e.target) && !suggestBox.contains(e.target)) {
+                suggestBox.classList.add('hidden');
+            }
+        });
     </script>
 </body>
 </html>
