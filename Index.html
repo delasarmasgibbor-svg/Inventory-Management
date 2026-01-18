@@ -3,609 +3,424 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GV Health | Inventory Pro</title>
+    <title>GV Inventory Manager Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap');
-        body { font-family: 'Inter', sans-serif; }
-        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-        
-        .loading-overlay { 
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            background: rgba(255,255,255,0.95); z-index: 999; display: flex; 
-            flex-direction: column; align-items: center; justify-content: center; 
-        }
-        #login-screen {
-            position: fixed; inset: 0; 
-            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); 
-            z-index: 1000;
-            display: flex; align-items: center; justify-content: center;
-        }
-        .nav-btn { transition: all 0.2s; }
-        .email-preview { font-family: 'Courier New', Courier, monospace; line-height: 1.5; }
-        input[type="number"]::-webkit-inner-spin-button, 
-        input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-
-        /* Suggestion Dropdown Styling */
-        .suggestion-box {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            right: 0;
-            background: white;
-            border: 1px solid #e2e8f0;
-            border-radius: 0.75rem;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-            z-index: 100;
-            max-height: 200px;
-            overflow-y: auto;
-        }
-        .suggestion-item {
-            padding: 0.75rem 1rem;
-            cursor: pointer;
-            border-bottom: 1px solid #f1f5f9;
-            transition: background 0.2s;
-        }
-        .suggestion-item:last-child { border-bottom: none; }
-        .suggestion-item:hover { background: #f8fafc; }
+        .hidden-screen { display: none !important; }
+        .nav-tab.active { border-bottom: 2px solid #2563eb; color: #2563eb; font-weight: 600; }
+        .toast { transition: all 0.3s ease-in-out; transform: translateX(-50%) translateY(100px); }
+        .toast.show { transform: translateX(-50%) translateY(0); }
+        .logo-glow { filter: drop-shadow(0 0 8px rgba(37, 99, 235, 0.1)); }
     </style>
 </head>
-<body class="bg-[#F1F5F9] text-slate-900 overflow-hidden">
-
-    <!-- Confirmation Modal -->
-    <div id="confirm-modal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[1100] flex items-center justify-center p-4">
-        <div class="bg-white rounded-[2.5rem] p-8 max-sm w-full shadow-2xl border border-slate-100">
-            <div class="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-6 mx-auto">
-                <i class="fas fa-exclamation-triangle text-red-500 text-2xl"></i>
-            </div>
-            <h3 class="text-xl font-black text-center text-slate-800 mb-2">Wipe All Records?</h3>
-            <p class="text-slate-500 text-sm text-center mb-8 leading-relaxed">This will delete all current records and replace them with the new file data.</p>
-            <div class="flex gap-3">
-                <button onclick="closeModal('confirm-modal')" class="flex-1 py-4 rounded-2xl font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 transition-all">Cancel</button>
-                <button onclick="document.getElementById('csvFile').click()" class="flex-1 py-4 rounded-2xl font-bold text-white bg-red-500 hover:bg-red-600 shadow-lg shadow-red-200 transition-all">Confirm</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Manual Add Item Modal -->
-    <div id="add-item-modal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[1100] flex items-center justify-center p-4">
-        <div class="bg-white rounded-[2.5rem] p-8 max-w-md w-full shadow-2xl border border-slate-100">
-            <div class="flex justify-between items-center mb-6">
-                <h3 class="text-xl font-black text-slate-800">Add New Item</h3>
-                <button onclick="closeModal('add-item-modal')" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times"></i></button>
-            </div>
-            <form id="manual-add-form" class="space-y-4">
-                <div class="relative">
-                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Description <span class="text-blue-600">*</span></label>
-                    <input type="text" id="new-desc" required autocomplete="off" class="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-blue-500 font-medium text-sm" placeholder="e.g. Bread White Sliced 700g">
-                    <div id="desc-suggestions" class="suggestion-box hidden custom-scrollbar"></div>
-                </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Dept (Optional)</label>
-                        <input type="text" id="new-dept" class="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-blue-500 font-medium text-sm" placeholder="e.g. 4020">
-                    </div>
-                    <div>
-                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">SKU Code (Optional)</label>
-                        <input type="text" id="new-code" class="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-blue-500 font-medium text-sm" placeholder="e.g. 104522">
-                    </div>
-                </div>
-                <div>
-                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Supplier <span class="text-blue-600">*</span></label>
-                    <input type="text" id="new-supplier" required class="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-blue-500 font-medium text-sm" placeholder="e.g. Cadell or Bidfood">
-                </div>
-                <div>
-                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Current Price ($) <span class="text-blue-600">*</span></label>
-                    <input type="number" step="0.01" id="new-price" required class="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-blue-500 font-medium text-sm" placeholder="0.00">
-                </div>
-                <div class="pt-4">
-                    <button type="submit" id="submit-item-btn" class="w-full bg-[#004a99] text-white font-bold py-4 rounded-2xl hover:bg-blue-700 transition-all shadow-lg">Save to Inventory</button>
-                </div>
-            </form>
-        </div>
-    </div>
+<body class="bg-slate-50 min-h-screen text-slate-900 font-sans">
 
     <!-- Login Screen -->
-    <div id="login-screen">
-        <div class="bg-white p-10 rounded-[2.5rem] shadow-2xl w-full max-w-md mx-4 border border-slate-100">
-            <div class="flex flex-col items-center mb-8">
-                <div class="mb-6">
-                    <img src="https://victrials.com.au/wp-content/uploads/2021/05/GV-Health_358x200.png" alt="GV Health Logo" class="h-20 object-contain">
+    <div id="login-screen" class="fixed inset-0 flex items-center justify-center bg-slate-100 z-50 px-4">
+        <div class="bg-white p-10 rounded-2xl shadow-2xl w-full max-w-md border border-slate-200">
+            <div class="text-center mb-8">
+                <div class="inline-flex items-center justify-center mb-6 overflow-hidden rounded-xl bg-white p-2 border border-slate-100 shadow-sm">
+                    <img src="https://th.bing.com/th/id/OIP.wA3jMn-BDiUda8walzO9xAHaEI?w=290&h=180&c=7&r=0&o=7&pid=1.7&rm=3" 
+                         alt="GV Health Logo" 
+                         class="h-20 w-auto object-contain"
+                         onerror="this.src='https://via.placeholder.com/200x100?text=GV+Health'">
                 </div>
-                <h1 class="text-2xl font-black text-slate-800 tracking-tight">System Login</h1>
-                <p class="text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em] mt-2 text-center">Internal Inventory Portal</p>
+                <h1 class="text-2xl font-extrabold tracking-tight text-slate-800">Inventory Portal</h1>
+                <p class="text-slate-500 mt-2 text-sm uppercase tracking-widest font-semibold text-blue-600">Strict Data Mapping</p>
             </div>
-            <form id="login-form" class="space-y-5">
+            <form id="login-form" class="space-y-6">
                 <div>
-                    <label class="block text-[11px] font-black text-slate-500 uppercase mb-2 ml-1">Username</label>
-                    <input type="text" id="username" required class="w-full px-4 py-3.5 rounded-2xl border border-slate-200 outline-none focus:border-blue-500 transition-all font-medium text-slate-700" placeholder="admin">
+                    <label class="block text-sm font-semibold text-slate-700 mb-1 text-left">Access Key</label>
+                    <input type="password" id="username" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all" placeholder="Enter password..." required>
                 </div>
-                <div>
-                    <label class="block text-[11px] font-black text-slate-500 uppercase mb-2 ml-1">Password</label>
-                    <input type="password" id="password" required class="w-full px-4 py-3.5 rounded-2xl border border-slate-200 outline-none focus:border-blue-500 transition-all font-medium text-slate-700" placeholder="••••••••">
-                </div>
-                <div id="login-error" class="hidden text-red-500 text-xs font-bold text-center bg-red-50 py-3 rounded-xl border border-red-100">Invalid credentials.</div>
-                <button type="submit" class="w-full bg-[#004a99] text-white font-bold py-4 rounded-2xl hover:bg-blue-700 transition-all shadow-lg">Secure Access</button>
+                <button type="submit" class="w-full bg-[#00529b] text-white p-4 rounded-xl font-bold hover:bg-blue-800 shadow-lg shadow-blue-100 transition-all active:scale-95">Sign In</button>
             </form>
         </div>
     </div>
 
-    <div id="loader" class="loading-overlay hidden">
-        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
-        <p class="font-bold text-slate-600" id="loader-text">Loading...</p>
-    </div>
-
-    <div id="main-app" class="hidden flex h-screen overflow-hidden">
-        <!-- Sidebar -->
-        <nav class="w-64 bg-[#0f172a] text-white p-6 hidden md:flex flex-col shadow-2xl z-20">
-            <div class="flex flex-col items-center mb-10 px-2 border-b border-slate-800 pb-6">
-                <img src="https://victrials.com.au/wp-content/uploads/2021/05/GV-Health_358x200.png" alt="GV Health" class="h-12 object-contain bg-white p-1 rounded-lg mb-3">
-                <h1 class="font-black text-sm tracking-widest uppercase text-slate-400">Inventory Pro</h1>
+    <!-- Main App Layout -->
+    <div id="main-app" class="hidden-screen flex flex-col h-screen">
+        <header class="bg-white border-b border-slate-200 px-6 py-2 flex items-center justify-between sticky top-0 z-40 shadow-sm">
+            <div class="flex items-center gap-4">
+                <img src="https://th.bing.com/th/id/OIP.wA3jMn-BDiUda8walzO9xAHaEI?w=290&h=180&c=7&r=0&o=7&pid=1.7&rm=3" 
+                     alt="GV Health" 
+                     class="h-10 w-auto object-contain logo-glow">
+                <div class="h-8 w-px bg-slate-200 hidden md:block"></div>
+                <h2 id="page-title" class="text-slate-800 font-bold tracking-tight text-sm md:text-base hidden md:block">DASHBOARD</h2>
             </div>
+            <div class="flex items-center gap-2">
+                <button onclick="window.showTransitionModal()" class="bg-amber-50 text-amber-700 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-amber-100 transition border border-amber-200">Transition</button>
+                
+                <label class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 transition cursor-pointer flex items-center gap-2 shadow-md shadow-blue-100">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                    Import CSV
+                    <input type="file" id="csv-import" class="hidden" accept=".csv" onchange="window.handleCSVImport(event)">
+                </label>
 
-            <div class="space-y-1 flex-1">
-                <button onclick="switchTab('dashboard')" id="btn-dashboard" class="nav-btn w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm transition-all bg-white/10 text-white font-bold">
-                    <i class="fas fa-chart-pie w-5"></i> Dashboard
-                </button>
-                <button onclick="switchTab('inventory')" id="btn-inventory" class="nav-btn w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm transition-all text-slate-500 hover:text-white">
-                    <i class="fas fa-boxes-stacked w-5"></i> Stock List
-                </button>
-                <button onclick="switchTab('email')" id="btn-email" class="nav-btn w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm transition-all text-slate-500 hover:text-white">
-                    <i class="fas fa-envelope-open-text w-5"></i> Email Template
-                </button>
-            </div>
-
-            <div class="space-y-2 pt-6 border-t border-slate-800">
-                <button onclick="openModal('add-item-modal')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-blue-500/10 text-blue-400 text-[11px] font-bold hover:bg-blue-500/20 transition-all">
-                    <i class="fas fa-plus-circle"></i> Add New Item
-                </button>
-                <button onclick="openModal('confirm-modal')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-emerald-500/10 text-emerald-400 text-[11px] font-bold hover:bg-emerald-500/20 transition-all">
-                    <i class="fas fa-cloud-upload-alt"></i> Import CSV
-                </button>
-                <button onclick="logout()" class="w-full flex items-center gap-3 px-4 py-2 text-[11px] font-bold text-red-400 hover:text-red-300 transition-colors">
-                    <i class="fas fa-power-off"></i> Sign Out
+                <div class="h-8 w-px bg-slate-200 mx-2"></div>
+                
+                <button onclick="auth.signOut()" class="text-slate-400 hover:text-red-500 p-2 transition">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
                 </button>
             </div>
+        </header>
+
+        <nav class="bg-white border-b border-slate-200 px-6 flex gap-8">
+            <button id="tab-dashboard" onclick="window.switchTab('dashboard')" class="nav-tab active py-4 text-sm tracking-wide">Overview</button>
+            <button id="tab-inventory" onclick="window.switchTab('inventory')" class="nav-tab py-4 text-sm tracking-wide">Inventory List</button>
+            <button id="tab-settings" onclick="window.switchTab('settings')" class="nav-tab py-4 text-sm tracking-wide">Management</button>
         </nav>
 
-        <!-- Main Content -->
-        <main class="flex-1 flex flex-col h-screen overflow-hidden">
-            <header class="px-8 py-5 bg-white border-b border-slate-200 flex justify-between items-center z-10">
-                <div class="flex flex-col">
-                    <h2 id="page-title" class="text-xl font-black text-slate-800">Analytics Dashboard</h2>
-                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5" id="breadcrumb">Home / Dashboard</p>
-                </div>
-                <div id="cloud-status" class="text-[10px] font-black text-slate-400 flex items-center gap-2 bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">
-                    <i class="fas fa-circle-notch fa-spin text-blue-500"></i> INITIALIZING...
-                </div>
-            </header>
-
+        <main class="flex-1 overflow-auto p-4 md:p-8 bg-slate-50/50">
             <!-- Dashboard View -->
-            <div id="view-dashboard" class="flex-1 overflow-y-auto p-8 custom-scrollbar space-y-8">
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-                    <div class="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm">
-                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Items</p>
-                        <div id="stat-total" class="text-3xl font-black text-slate-800">0</div>
+            <section id="view-dashboard" class="space-y-8 max-w-7xl mx-auto">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <span class="text-slate-500 text-sm font-medium">Verified Items</span>
+                        <h3 id="stat-total-items" class="text-4xl font-extrabold text-slate-800">0</h3>
                     </div>
-                    <div class="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm">
-                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Avg Inflation</p>
-                        <div id="stat-inflation" class="text-3xl font-black text-red-500">0.00%</div>
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <span class="text-slate-500 text-sm font-medium">Price Increases</span>
+                        <h3 id="stat-increases" class="text-4xl font-extrabold text-red-600">0</h3>
                     </div>
-                    <div class="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm">
-                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Value</p>
-                        <div id="stat-value" class="text-3xl font-black text-emerald-500">$0</div>
-                    </div>
-                    <div class="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm">
-                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Price Hikes</p>
-                        <div id="stat-increased-count" class="text-3xl font-black text-amber-500">0</div>
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <span class="text-slate-500 text-sm font-medium">Price Decreases</span>
+                        <h3 id="stat-decreases" class="text-4xl font-extrabold text-green-600">0</h3>
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div class="lg:col-span-2 bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm">
-                        <h3 class="text-lg font-black text-slate-800 mb-8">Today's Largest Increases</h3>
-                        <div class="relative h-[360px]">
-                            <canvas id="priceChart"></canvas>
-                        </div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+                        <h4 class="font-bold text-slate-800 mb-4 flex items-center gap-2 text-sm uppercase tracking-wider">Top Increases</h4>
+                        <div id="list-increases" class="space-y-3"></div>
                     </div>
-                    <div class="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm flex flex-col">
-                        <h3 class="text-lg font-black text-slate-800 mb-8">Volatile Suppliers</h3>
-                        <div id="supplier-list" class="flex-1 space-y-4 overflow-y-auto custom-scrollbar pr-2"></div>
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+                        <h4 class="font-bold text-slate-800 mb-4 flex items-center gap-2 text-sm uppercase tracking-wider">Top Decreases</h4>
+                        <div id="list-decreases" class="space-y-3"></div>
                     </div>
                 </div>
-            </div>
-
-            <!-- Email Composer View -->
-            <div id="view-email" class="hidden flex-1 overflow-y-auto p-8 custom-scrollbar">
-                <div class="max-w-4xl mx-auto space-y-6">
-                    <div class="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
-                        <div class="bg-slate-50 px-8 py-6 border-b border-slate-100 flex justify-between items-center">
-                            <div>
-                                <h3 class="text-lg font-black text-slate-800">Email Update Draft</h3>
-                                <p class="text-xs text-slate-400 font-bold uppercase tracking-wider">Ready to be sent for today</p>
-                            </div>
-                            <button onclick="copyEmailToClipboard()" class="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition-all shadow-lg shadow-blue-100">
-                                <i class="fas fa-copy"></i> <span id="copy-btn-text">Copy All Text</span>
-                            </button>
-                        </div>
-                        <div class="p-8">
-                            <div class="mb-4">
-                                <label class="text-[10px] font-black text-slate-400 uppercase mb-1 block">Subject Line</label>
-                                <div id="email-subject-display" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700"></div>
-                            </div>
-                            <label class="text-[10px] font-black text-slate-400 uppercase mb-1 block">Body</label>
-                            <div id="email-body-display" class="email-preview whitespace-pre-wrap bg-slate-50 p-6 rounded-2xl border border-slate-200 text-sm text-slate-700 min-h-[400px]"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            </section>
 
             <!-- Inventory View -->
-            <div id="view-inventory" class="hidden flex-1 overflow-y-auto custom-scrollbar">
-                <div class="sticky top-0 bg-[#F1F5F9]/80 backdrop-blur-md z-10 px-8 py-6 border-b border-slate-200 flex flex-col md:flex-row gap-4 items-center">
-                    <div class="flex-1 relative w-full">
-                        <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                        <input type="text" id="searchInput" oninput="handleSearch()" placeholder="Search description or SKU..." class="w-full pl-12 pr-4 py-4 rounded-2xl border border-slate-200 outline-none focus:border-blue-500 shadow-sm font-medium">
+            <section id="view-inventory" class="hidden space-y-6 max-w-7xl mx-auto">
+                <div class="flex flex-col md:flex-row gap-4 items-center bg-white p-4 rounded-xl border border-slate-200">
+                    <div class="relative flex-1 w-full">
+                        <svg class="w-5 h-5 absolute left-3 top-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                        <input type="text" id="search-bar" oninput="window.handleSearch()" placeholder="Search Name or Supplier..." class="w-full pl-10 pr-4 py-3 bg-slate-50 border-0 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 transition-all">
                     </div>
-                    <select id="supplierFilter" onchange="handleSearch()" class="px-6 py-4 bg-white border border-slate-200 rounded-2xl text-sm font-bold text-slate-700 shadow-sm"></select>
+                    <select id="supplier-filter" onchange="window.handleSearch()" class="w-full md:w-64 p-3 bg-slate-50 border-0 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                        <option value="">All Suppliers</option>
+                    </select>
                 </div>
+                
+                <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead class="bg-slate-50 text-[10px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100">
+                            <tr>
+                                <th class="px-6 py-4">Supplier</th>
+                                <th class="px-6 py-4">Description</th>
+                                <th class="px-6 py-4">UOM</th>
+                                <th class="px-6 py-4">Prev Cost</th>
+                                <th class="px-6 py-4 text-center">Trend</th>
+                                <th class="px-6 py-4 w-44">New Cost</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inventory-table-body" class="divide-y divide-slate-100 text-sm"></tbody>
+                    </table>
+                </div>
+            </section>
 
-                <div class="p-8 space-y-6">
-                    <div class="bg-white rounded-[2rem] border border-slate-200 overflow-hidden shadow-sm">
-                        <table class="w-full text-left table-fixed">
-                            <thead class="bg-slate-50 text-[10px] font-black uppercase text-slate-400 border-b border-slate-200">
-                                <tr>
-                                    <th class="px-8 py-5 w-24 text-center">Dept</th>
-                                    <th class="px-8 py-5 w-40">SKU Code</th>
-                                    <th class="px-8 py-5">Description</th>
-                                    <th class="px-8 py-5 w-32 text-right">Prev Price</th>
-                                    <th class="px-8 py-5 w-40 text-right">Current Price</th>
-                                    <th class="px-8 py-5 w-16"></th>
-                                </tr>
-                            </thead>
-                            <tbody id="inventoryTableBody" class="divide-y divide-slate-100"></tbody>
-                        </table>
-                        <div id="loadMore" class="p-6 text-center text-xs font-black uppercase tracking-widest text-slate-400 bg-slate-50 cursor-pointer hover:text-blue-600">Load More</div>
+            <!-- Management View -->
+            <section id="view-settings" class="hidden space-y-8 max-w-3xl mx-auto">
+                <div class="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm">
+                    <h4 class="text-xl font-bold text-slate-800 mb-6">Database Management</h4>
+                    <div class="space-y-6">
+                        <div class="flex items-center justify-between p-4 bg-red-50 rounded-xl">
+                            <div>
+                                <p class="font-bold text-red-700">Clear All Records</p>
+                                <p class="text-xs text-red-500">Removes everything. Use this if the import mapping was wrong.</p>
+                            </div>
+                            <button onclick="window.confirmClearAll()" class="bg-red-600 text-white px-4 py-2 rounded-lg font-bold text-sm">Delete All</button>
+                        </div>
                     </div>
                 </div>
-            </div>
+            </section>
         </main>
     </div>
 
-    <input type="file" id="csvFile" class="hidden" accept=".csv" onchange="processCSV(event)">
+    <!-- Modals -->
+    <div id="modal-container" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 px-4">
+        <div id="modal-transition" class="hidden bg-white rounded-2xl p-8 max-w-sm w-full">
+            <h3 class="text-xl font-bold mb-2">Cycle Prices</h3>
+            <p class="text-sm text-slate-500 mb-6">Current 'New Cost' values will move to 'Previous Cost'.</p>
+            <div class="flex gap-3">
+                <button onclick="window.closeModals()" class="flex-1 py-3 bg-slate-100 rounded-xl font-bold">Cancel</button>
+                <button onclick="window.performDailyTransition()" class="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold">Confirm</button>
+            </div>
+        </div>
+        <div id="modal-clear" class="hidden bg-white rounded-2xl p-8 max-w-sm w-full">
+            <h3 class="text-xl font-bold mb-2">Wipe Database</h3>
+            <p class="text-sm text-slate-500 mb-6">Are you sure? This cannot be undone.</p>
+            <div class="flex gap-3">
+                <button onclick="window.closeModals()" class="flex-1 py-3 bg-slate-100 rounded-xl font-bold">Cancel</button>
+                <button onclick="window.executeClearAll()" class="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold">Wipe</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="process-loader" class="hidden fixed inset-0 bg-white/90 flex flex-col items-center justify-center z-[60]">
+        <div class="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        <p id="loader-text" class="mt-4 font-bold text-slate-800">Reading CSV Structure...</p>
+    </div>
+
+    <div id="toast" class="toast fixed bottom-8 left-1/2 bg-slate-900 text-white px-8 py-4 rounded-2xl shadow-2xl z-[100] font-bold text-sm">
+        <span id="toast-text">Success</span>
+    </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot, writeBatch, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, collection, onSnapshot, writeBatch, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyDf9OTFNhj6W4yrIvU6mZythz2yK-GgAu0",
-            authDomain: "inventory-management-168f3.firebaseapp.com",
-            projectId: "inventory-management-168f3",
-            storageBucket: "inventory-management-168f3.firebasestorage.app",
-            messagingSenderId: "497026514801",
-            appId: "1:497026514801:web:4e68dcb777f9c5ac8840d0"
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+            apiKey: "AIzaSyDnIdmes4eSUw2weldqlg5RGrx169YSDrk",
+            authDomain: "gvh-project.firebaseapp.com",
+            projectId: "gvh-project",
+            storageBucket: "gvh-project.firebasestorage.app",
+            messagingSenderId: "651254312325",
+            appId: "1:651254312325:web:26fdf466881a2b8abde8ec"
         };
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        const appId = "inventory-management-v1";
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'gv-inventory-system';
 
         window.inventory = [];
-        window.filteredData = [];
-        window.visibleCount = 60;
-        window.chartInstance = null;
-        let activeDocId = null;
+        let unsubscribe = null;
 
-        document.getElementById('login-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const u = document.getElementById('username').value;
-            const p = document.getElementById('password').value;
-            if (u === "admin" && p === "admin123") {
-                showLoader("Connecting to Cloud...");
-                try {
-                    await signInAnonymously(auth);
-                    document.getElementById('login-screen').style.display = 'none';
-                    document.getElementById('main-app').classList.remove('hidden');
-                    hideLoader();
-                } catch (err) { alert("Cloud connection failed."); hideLoader(); }
-            } else { document.getElementById('login-error').classList.remove('hidden'); }
-        });
+        window.showToast = (msg) => {
+            const t = document.getElementById('toast');
+            document.getElementById('toast-text').innerText = msg;
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 3000);
+        };
 
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                checkDailyRollover();
-                listenToInventory();
-            }
-        });
+        window.closeModals = () => {
+            document.getElementById('modal-container').classList.add('hidden');
+            document.getElementById('modal-transition').classList.add('hidden');
+            document.getElementById('modal-clear').classList.add('hidden');
+        };
 
-        async function checkDailyRollover() {
-            const metaRef = doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'rollover');
-            const metaDoc = await getDoc(metaRef);
-            const today = new Date().toISOString().split('T')[0];
-            if (!metaDoc.exists() || metaDoc.data().lastRollover !== today) {
-                showLoader("Daily Price Update...");
-                const snapshot = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'stock'));
-                const docs = snapshot.docs;
-                for (let i = 0; i < docs.length; i += 450) {
+        window.showTransitionModal = () => {
+            document.getElementById('modal-container').classList.remove('hidden');
+            document.getElementById('modal-transition').classList.remove('hidden');
+        };
+
+        window.confirmClearAll = () => {
+            document.getElementById('modal-container').classList.remove('hidden');
+            document.getElementById('modal-clear').classList.remove('hidden');
+        };
+
+        window.refreshData = (user) => {
+            if (!user) return;
+            const stockCol = collection(db, 'artifacts', appId, 'public', 'data', 'stock');
+            if (unsubscribe) unsubscribe();
+            
+            unsubscribe = onSnapshot(stockCol, (snap) => {
+                window.inventory = snap.docs.map(doc => ({ docId: doc.id, ...doc.data() }));
+                updateDashboard();
+                updateSupplierFilter();
+                window.handleSearch();
+            });
+        };
+
+        const updateDashboard = () => {
+            document.getElementById('stat-total-items').innerText = window.inventory.length;
+            const movements = window.inventory.map(i => ({
+                ...i,
+                diff: Number(i.currentPrice || 0) - Number(i.previousPrice || 0)
+            })).filter(i => i.diff !== 0);
+
+            document.getElementById('stat-increases').innerText = movements.filter(m => m.diff > 0).length;
+            document.getElementById('stat-decreases').innerText = movements.filter(m => m.diff < 0).length;
+
+            const sortedInc = [...movements].sort((a, b) => b.diff - a.diff).slice(0, 5);
+            const sortedDec = [...movements].sort((a, b) => a.diff - b.diff).slice(0, 5);
+
+            const renderM = (items, color) => {
+                if(!items.length) return `<p class="text-slate-300 text-xs text-center py-4 italic">No movements</p>`;
+                return items.map(i => `
+                    <div class="flex justify-between p-2 text-xs border-b border-slate-50">
+                        <span class="truncate pr-4 font-semibold">${i.description}</span>
+                        <span class="${color} font-black">$${Math.abs(i.diff).toFixed(2)}</span>
+                    </div>`).join('');
+            };
+            document.getElementById('list-increases').innerHTML = renderM(sortedInc, 'text-red-600');
+            document.getElementById('list-decreases').innerHTML = renderM(sortedDec, 'text-green-600');
+        };
+
+        window.handleSearch = () => {
+            const q = document.getElementById('search-bar').value.toLowerCase();
+            const filter = document.getElementById('supplier-filter').value;
+            const filtered = window.inventory.filter(i => {
+                const matchesSearch = (i.description || '').toLowerCase().includes(q) || (i.supplier || '').toLowerCase().includes(q);
+                return matchesSearch && (filter === '' || i.supplier === filter);
+            });
+            renderTable(filtered);
+        };
+
+        const renderTable = (items) => {
+            const body = document.getElementById('inventory-table-body');
+            body.innerHTML = items.map(i => {
+                const prev = Number(i.previousPrice || 0);
+                const curr = Number(i.currentPrice || 0);
+                return `
+                <tr class="hover:bg-slate-50/50">
+                    <td class="px-6 py-4"><span class="bg-slate-100 px-2 py-1 rounded text-[9px] font-bold uppercase">${i.supplier || '-'}</span></td>
+                    <td class="px-6 py-4 font-semibold text-slate-800">${i.description || '-'}</td>
+                    <td class="px-6 py-4 text-slate-400">${i.uom || '-'}</td>
+                    <td class="px-6 py-4 text-slate-400 font-mono font-bold">$${prev.toFixed(2)}</td>
+                    <td class="px-6 py-4 text-center font-bold ${curr > prev ? 'text-red-600' : (curr < prev ? 'text-green-600' : 'text-slate-300')}">${curr > prev ? '▲' : (curr < prev ? '▼' : '▬')}</td>
+                    <td class="px-6 py-4">
+                        <input type="number" step="0.01" class="w-full p-2 border border-slate-200 rounded text-sm" value="${curr.toFixed(2)}" 
+                        onchange="window.updatePrice('${i.docId}', this.value)">
+                    </td>
+                </tr>`}).join('');
+        };
+
+        window.updatePrice = async (docId, val) => {
+            try { 
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'stock', docId), { currentPrice: Number(val) || 0 }); 
+                window.showToast("Saved Locally"); 
+            } catch (e) { window.showToast("Save Failed"); }
+        };
+
+        window.performDailyTransition = async () => {
+            window.closeModals();
+            document.getElementById('process-loader').classList.remove('hidden');
+            try {
+                for (let i = 0; i < window.inventory.length; i += 400) {
                     const batch = writeBatch(db);
-                    docs.slice(i, i + 450).forEach(d => batch.update(d.ref, { prevCost: d.data().newCost }));
+                    window.inventory.slice(i, i + 400).forEach(item => {
+                        batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'stock', item.docId), { previousPrice: Number(item.currentPrice) || 0 });
+                    });
                     await batch.commit();
                 }
-                await setDoc(metaRef, { lastRollover: today }, { merge: true });
-                hideLoader();
-            }
-        }
+                window.showToast("Daily Cycle Complete");
+            } finally { document.getElementById('process-loader').classList.add('hidden'); }
+        };
 
-        function listenToInventory() {
-            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'stock'), (snapshot) => {
-                const data = [];
-                snapshot.forEach(doc => data.push({ ...doc.data(), docId: doc.id }));
-                window.inventory = data.sort((a, b) => (a.idx || 0) - (b.idx || 0));
-                updateFilterUI();
-                handleSearch();
-                updateDashboard();
-                generateEmailDraft();
-                document.getElementById('cloud-status').innerHTML = '<i class="fas fa-check-circle text-emerald-500"></i> CLOUD SYNCED';
-            });
-        }
-
-        // --- Auto-Suggest Logic ---
-        const descInput = document.getElementById('new-desc');
-        const suggestBox = document.getElementById('desc-suggestions');
-        const submitBtn = document.getElementById('submit-item-btn');
-
-        descInput.addEventListener('input', (e) => {
-            const val = e.target.value.toLowerCase();
-            suggestBox.innerHTML = '';
-            activeDocId = null;
-            submitBtn.innerText = "Save to Inventory";
-
-            if (val.length < 2) {
-                suggestBox.classList.add('hidden');
-                return;
-            }
-
-            const matches = window.inventory.filter(i => 
-                (i.description || '').toLowerCase().includes(val) || 
-                (i.code || '').toLowerCase().includes(val)
-            ).slice(0, 5);
-
-            if (matches.length > 0) {
-                suggestBox.classList.remove('hidden');
-                matches.forEach(m => {
-                    const div = document.createElement('div');
-                    div.className = 'suggestion-item';
-                    div.innerHTML = `
-                        <div class="text-xs font-bold text-slate-800">${m.description}</div>
-                        <div class="text-[9px] text-slate-400 uppercase font-black">${m.supplier} | ${m.code || 'NO SKU'}</div>
-                    `;
-                    div.onclick = () => selectSuggestion(m);
-                    suggestBox.appendChild(div);
-                });
-            } else {
-                suggestBox.classList.add('hidden');
-            }
-        });
-
-        function selectSuggestion(item) {
-            descInput.value = item.description;
-            document.getElementById('new-dept').value = item.costCentre === '-' ? '' : item.costCentre;
-            document.getElementById('new-code').value = item.code;
-            document.getElementById('new-supplier').value = item.supplier;
-            document.getElementById('new-price').value = item.newCost;
-            activeDocId = item.docId;
-            submitBtn.innerText = "Update Existing Item";
-            suggestBox.classList.add('hidden');
-        }
-
-        document.getElementById('manual-add-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            showLoader("Syncing item...");
-            
-            const cost = parseFloat(document.getElementById('new-price').value) || 0;
-            const data = {
-                costCentre: document.getElementById('new-dept').value || '-',
-                code: document.getElementById('new-code').value || '',
-                description: document.getElementById('new-desc').value,
-                supplier: document.getElementById('new-supplier').value,
-                newCost: cost,
-                updatedAt: Date.now()
-            };
-
+        window.executeClearAll = async () => {
+            window.closeModals();
+            document.getElementById('process-loader').classList.remove('hidden');
             try {
-                if (activeDocId) {
-                    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'stock', activeDocId), data, { merge: true });
-                } else {
-                    const stockRef = collection(db, 'artifacts', appId, 'public', 'data', 'stock');
-                    await setDoc(doc(stockRef), { ...data, prevCost: cost, idx: window.inventory.length });
+                for (let i = 0; i < window.inventory.length; i += 400) {
+                    const batch = writeBatch(db);
+                    window.inventory.slice(i, i + 400).forEach(item => batch.delete(doc(db, 'artifacts', appId, 'public', 'data', 'stock', item.docId)));
+                    await batch.commit();
                 }
-                closeModal('add-item-modal');
-                e.target.reset();
-                activeDocId = null;
-            } catch (err) {
-                alert("Cloud sync failed.");
-            } finally {
-                hideLoader();
-            }
-        });
+                window.showToast("Database Cleared");
+            } finally { document.getElementById('process-loader').classList.add('hidden'); }
+        };
 
-        window.processCSV = async (event) => {
+        window.handleCSVImport = (event) => {
             const file = event.target.files[0];
             if (!file) return;
-            showLoader("Processing file...");
-            closeModal('confirm-modal');
             const reader = new FileReader();
             reader.onload = async (e) => {
-                const text = e.target.result;
-                const rows = text.split('\n').slice(1);
-                const snapshot = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'stock'));
-                for (let i = 0; i < snapshot.docs.length; i += 450) {
-                    const dBatch = writeBatch(db);
-                    snapshot.docs.slice(i, i + 450).forEach(d => dBatch.delete(d.ref));
-                    await dBatch.commit();
-                }
-                for (let i = 0; i < rows.length; i += 450) {
-                    const iBatch = writeBatch(db);
-                    rows.slice(i, i + 450).forEach((row, idxInBatch) => {
-                        const cols = row.split(',').map(c => c.trim().replace(/^"|"$/g, ''));
-                        if (cols.length < 4) return;
-                        const price = parseFloat(cols[3]) || 0;
-                        iBatch.set(doc(collection(db, 'artifacts', appId, 'public', 'data', 'stock')), {
-                            costCentre: cols[0], code: cols[1], description: cols[2],
-                            prevCost: price, newCost: price, supplier: cols[4] || 'Unknown',
-                            idx: i + idxInBatch, updatedAt: Date.now()
+                const rows = e.target.result.split('\n').map(r => r.trim()).filter(r => r.length > 0);
+                document.getElementById('process-loader').classList.remove('hidden');
+                
+                try {
+                    // Start from index 1 to skip header: 
+                    // Expected Format: Cost Centre, Subj., Supplier, Code, Description, UOM, Previous Cost, New Cost...
+                    for (let i = 1; i < rows.length; i += 400) {
+                        const batch = writeBatch(db);
+                        rows.slice(i, i + 400).forEach(rowStr => {
+                            const cols = rowStr.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                            
+                            // STRICT MAPPING
+                            const supplier = (cols[2] || '').trim().replace(/^"|"$/g, '');
+                            const description = (cols[4] || '').trim().replace(/^"|"$/g, '');
+                            const uom = (cols[5] || '').trim().replace(/^"|"$/g, '');
+                            
+                            const prevCostRaw = (cols[6] || '0').replace(/[^0-9.]/g, '');
+                            const newCostRaw = (cols[7] || '0').replace(/[^0-9.]/g, '');
+                            
+                            const prevPrice = Number(prevCostRaw) || 0;
+                            const newPrice = Number(newCostRaw) || 0;
+
+                            // Skip if it's the header or empty row
+                            if (supplier && description && supplier.toLowerCase() !== 'supplier') {
+                                // UNIQUE KEY: Supplier + Clean Description + UOM
+                                const uniqueStr = `${supplier}_${description}_${uom}`.toLowerCase().replace(/[^a-z0-9]/g, '');
+                                const id = btoa(unescape(encodeURIComponent(uniqueStr))).replace(/[/+=]/g, '');
+
+                                batch.set(doc(db, 'artifacts', appId, 'public', 'data', 'stock', id), { 
+                                    supplier: supplier, 
+                                    description: description, 
+                                    uom: uom, 
+                                    previousPrice: prevPrice, 
+                                    currentPrice: newPrice 
+                                }, { merge: true });
+                            }
                         });
-                    });
-                    await iBatch.commit();
-                }
-                hideLoader();
+                        await batch.commit();
+                    }
+                    window.showToast("Import Complete - 10 Column Map Verified");
+                } catch (err) {
+                    console.error(err);
+                    window.showToast("Import Error");
+                } finally { document.getElementById('process-loader').classList.add('hidden'); }
             };
             reader.readAsText(file);
         };
 
-        window.updatePrice = async (docId, val) => {
-            const price = parseFloat(val) || 0;
-            const item = window.inventory.find(i => i.docId === docId);
-            if (!item || item.newCost === price) return;
-            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'stock', docId), { newCost: price, updatedAt: Date.now() }, { merge: true });
+        const updateSupplierFilter = () => {
+            const select = document.getElementById('supplier-filter');
+            const suppliers = [...new Set(window.inventory.map(i => i.supplier))].sort();
+            select.innerHTML = `<option value="">All Suppliers</option>` + 
+                suppliers.map(s => `<option value="${s}">${s}</option>`).join('');
         };
 
-        window.deleteItem = async (docId) => {
-            if(confirm("Delete this item?")) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'stock', docId));
-        };
-
-        window.handleSearch = () => {
-            const term = document.getElementById('searchInput').value.toLowerCase();
-            const supplier = document.getElementById('supplierFilter').value;
-            window.filteredData = window.inventory.filter(i => {
-                const matchTerm = (i.description || '').toLowerCase().includes(term) || (i.code || '').toLowerCase().includes(term);
-                return matchTerm && (supplier === 'All' || i.supplier === supplier);
+        window.switchTab = (tab) => {
+            ['dashboard', 'inventory', 'settings'].forEach(t => {
+                const el = document.getElementById(`view-${t}`);
+                if (el) el.classList.toggle('hidden', t !== tab);
+                const btn = document.getElementById(`tab-${t}`);
+                if (btn) btn.classList.toggle('active', t === tab);
             });
-            renderTable();
+            document.getElementById('page-title').innerText = tab.toUpperCase();
         };
 
-        function renderTable() {
-            const tbody = document.getElementById('inventoryTableBody');
-            tbody.innerHTML = window.filteredData.slice(0, window.visibleCount).map(item => `
-                <tr class="hover:bg-slate-50 transition-colors group">
-                    <td class="px-8 py-4 text-center text-[10px] font-black text-slate-400">${item.costCentre || '-'}</td>
-                    <td class="px-8 py-4 font-mono text-xs font-bold">${item.code || '-'}</td>
-                    <td class="px-8 py-4">
-                        <div class="text-sm font-bold text-slate-800 truncate" title="${item.description}">${item.description || '-'}</div>
-                        <div class="text-[9px] text-slate-400 font-bold uppercase">${item.supplier || '-'}</div>
-                    </td>
-                    <td class="px-8 py-4 text-right text-xs text-slate-400">$${(item.prevCost || 0).toFixed(2)}</td>
-                    <td class="px-8 py-4 text-right">
-                        <input type="number" step="0.01" class="w-24 text-right px-2 py-1 rounded-lg border border-slate-200 text-sm font-black focus:border-blue-500 outline-none" 
-                        value="${item.newCost}" onblur="updatePrice('${item.docId}', this.value)">
-                    </td>
-                    <td class="px-4 py-4 text-center">
-                        <button onclick="deleteItem('${item.docId}')" class="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"><i class="fas fa-trash-alt text-xs"></i></button>
-                    </td>
-                </tr>
-            `).join('');
-            document.getElementById('loadMore').style.display = window.filteredData.length > window.visibleCount ? 'block' : 'none';
-        }
-
-        function updateDashboard() {
-            const totalVal = window.inventory.reduce((s, i) => s + (i.newCost || 0), 0);
-            const prevVal = window.inventory.reduce((s, i) => s + (i.prevCost || 0), 0);
-            const hikers = window.inventory.filter(i => i.newCost > i.prevCost)
-                .map(i => ({...i, perc: ((i.newCost - i.prevCost) / (i.prevCost || 1)) * 100}))
-                .sort((a, b) => b.perc - a.perc);
-
-            document.getElementById('stat-total').innerText = window.inventory.length;
-            document.getElementById('stat-inflation').innerText = prevVal === 0 ? '0.00%' : `${(((totalVal - prevVal) / prevVal) * 100).toFixed(2)}%`;
-            document.getElementById('stat-value').innerText = `$${totalVal.toLocaleString()}`;
-            document.getElementById('stat-increased-count').innerText = hikers.length;
-
-            const ctx = document.getElementById('priceChart').getContext('2d');
-            if (window.chartInstance) window.chartInstance.destroy();
-            window.chartInstance = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: hikers.slice(0, 8).map(i => i.code || i.description.substring(0,8)),
-                    datasets: [{ label: 'Hike %', data: hikers.slice(0, 8).map(i => i.perc), backgroundColor: '#ef4444', borderRadius: 8, barThickness: 24 }]
-                },
-                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, grid: { display: false } } }, plugins: { legend: { display: false } } }
-            });
-            
-            const supCounts = {};
-            hikers.forEach(h => supCounts[h.supplier] = (supCounts[h.supplier] || 0) + 1);
-            const supList = Object.entries(supCounts).sort((a,b) => b[1] - a[1]);
-            document.getElementById('supplier-list').innerHTML = supList.map(([name, count]) => `
-                <div class="flex justify-between items-center p-3 rounded-2xl bg-slate-50 border border-slate-100">
-                    <span class="text-xs font-bold text-slate-700">${name}</span>
-                    <span class="px-3 py-1 bg-amber-100 text-amber-600 text-[10px] font-black rounded-full">${count} Hikes</span>
-                </div>
-            `).join('') || '<p class="text-slate-400 text-xs text-center mt-10">No hikes detected today.</p>';
-        }
-
-        window.copyEmailToClipboard = () => {
-            const subject = document.getElementById('email-subject-display').innerText;
-            const body = document.getElementById('email-body-display').innerText;
-            const el = document.createElement('textarea');
-            el.value = `Subject: ${subject}\n\n${body}`;
-            document.body.appendChild(el); el.select(); document.execCommand('copy'); document.body.removeChild(el);
-            const btn = document.getElementById('copy-btn-text'); btn.innerText = "Copied!"; setTimeout(() => btn.innerText = "Copy All Text", 2000);
-        };
-
-        function generateEmailDraft() {
-            const today = new Date().toLocaleDateString('en-AU', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-            const hikes = window.inventory.filter(i => i.newCost > i.prevCost).map(i => ({...i, perc: ((i.newCost - i.prevCost) / (i.prevCost || 1)) * 100})).sort((a, b) => b.perc - a.perc);
-            const subject = `GV Health Inventory: Price Update Report - ${today}`;
-            document.getElementById('email-subject-display').innerText = subject;
-            if (hikes.length === 0) {
-                document.getElementById('email-body-display').innerText = "Dear Team,\r\n\r\nNo price variations were detected for today.\r\n\r\nRegards,\r\nGV Health Inventory Portal";
-                return;
+        const initAuth = async () => {
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                try {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                    return;
+                } catch (e) { console.error(e); }
             }
-            let body = `Dear Team,\r\n\r\nPlease find the price report for ${today}.\r\n\r\nSUMMARY:\r\n- Monitored: ${window.inventory.length}\r\n- Price Increases: ${hikes.length}\r\n\r\nTOP PRICE INCREASES:\r\n------------------------------------------------------------\r\n`;
-            hikes.forEach(h => { body += `${h.code || 'N/A'} | ${h.description}\r\nSupplier: ${h.supplier}\r\nVariance: $${h.prevCost.toFixed(2)} -> $${h.newCost.toFixed(2)} (+${h.perc.toFixed(1)}%)\r\n------------------------------------------------------------\r\n`; });
-            body += `\r\nRegards,\r\nGV Health Inventory Management`;
-            document.getElementById('email-body-display').innerText = body;
-        }
-
-        window.openModal = (id) => document.getElementById(id).classList.remove('hidden');
-        window.closeModal = (id) => { 
-            document.getElementById(id).classList.add('hidden');
-            if(id === 'add-item-modal') {
-                document.getElementById('manual-add-form').reset();
-                activeDocId = null;
-                submitBtn.innerText = "Save to Inventory";
-                suggestBox.classList.add('hidden');
-            }
+            await signInAnonymously(auth);
         };
-        window.switchTab = (t) => {
-            const views = ['dashboard', 'inventory', 'email'];
-            views.forEach(v => document.getElementById(`view-${v}`).classList.add('hidden'));
-            document.getElementById(`view-${t}`).classList.remove('hidden');
-            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('bg-white/10', 'text-white', 'font-bold'));
-            document.getElementById(`btn-${t}`).classList.add('bg-white/10', 'text-white', 'font-bold');
-            document.getElementById('page-title').innerText = { dashboard: 'Analytics Dashboard', inventory: 'Stock Control List', email: 'Reporting Template' }[t];
-            document.getElementById('breadcrumb').innerText = { dashboard: 'Home / Dashboard', inventory: 'Home / Inventory', email: 'Home / Reporting' }[t];
-        };
-        window.showLoader = (t) => { document.getElementById('loader').classList.remove('hidden'); document.getElementById('loader-text').innerText = t; };
-        window.hideLoader = () => document.getElementById('loader').classList.add('hidden');
-        window.logout = () => window.location.reload();
-        function updateFilterUI() {
-            const sups = ['All', ...new Set(window.inventory.map(i => i.supplier).filter(Boolean))];
-            document.getElementById('supplierFilter').innerHTML = sups.map(s => `<option value="${s}">${s}</option>`).join('');
-        }
-        document.getElementById('loadMore').addEventListener('click', () => { window.visibleCount += 60; renderTable(); });
 
-        // Close suggestions if clicking outside
-        document.addEventListener('click', (e) => {
-            if (!descInput.contains(e.target) && !suggestBox.contains(e.target)) {
-                suggestBox.classList.add('hidden');
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await signInAnonymously(auth);
+        });
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                document.getElementById('login-screen').classList.add('hidden-screen');
+                document.getElementById('main-app').classList.remove('hidden-screen');
+                window.refreshData(user);
+            } else {
+                document.getElementById('login-screen').classList.remove('hidden-screen');
+                document.getElementById('main-app').classList.add('hidden-screen');
             }
         });
+
+        initAuth();
     </script>
 </body>
 </html>
