@@ -7,140 +7,176 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .hidden-screen { display: none !important; }
-        .nav-tab.active { border-bottom: 2px solid #2563eb; color: #2563eb; font-weight: 600; }
+        .nav-tab.active { border-bottom: 3px solid #00529b; color: #00529b; font-weight: 700; }
         .toast { transition: all 0.3s ease-in-out; transform: translateX(-50%) translateY(100px); }
         .toast.show { transform: translateX(-50%) translateY(0); }
-        .logo-glow { filter: drop-shadow(0 0 8px rgba(37, 99, 235, 0.1)); }
+        
+        .app-header {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            background: white;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .spinner {
+            border: 3px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #00529b;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body class="bg-slate-50 min-h-screen text-slate-900 font-sans">
 
     <!-- Login Screen -->
     <div id="login-screen" class="fixed inset-0 flex items-center justify-center bg-slate-100 z-50 px-4">
-        <div class="bg-white p-10 rounded-2xl shadow-2xl w-full max-w-md border border-slate-200">
-            <div class="text-center mb-8">
+        <div class="bg-white p-10 rounded-2xl shadow-2xl w-full max-w-md border border-slate-200 text-center">
+            <div class="mb-8">
                 <div class="inline-flex items-center justify-center mb-6 overflow-hidden rounded-xl bg-white p-2 border border-slate-100 shadow-sm">
                     <img src="https://th.bing.com/th/id/OIP.wA3jMn-BDiUda8walzO9xAHaEI?w=290&h=180&c=7&r=0&o=7&pid=1.7&rm=3" 
-                         alt="GV Health Logo" 
-                         class="h-20 w-auto object-contain"
-                         onerror="this.src='https://via.placeholder.com/200x100?text=GV+Health'">
+                         alt="GV Health Logo" class="h-20 w-auto object-contain">
                 </div>
                 <h1 class="text-2xl font-extrabold tracking-tight text-slate-800">Inventory Portal</h1>
-                <p class="text-slate-500 mt-2 text-sm uppercase tracking-widest font-semibold text-blue-600">Strict Data Mapping</p>
+                <p class="text-slate-500 mt-2 text-sm uppercase tracking-widest font-semibold text-blue-600">Secure Access Required</p>
             </div>
-            <form id="login-form" class="space-y-6">
-                <div>
-                    <label class="block text-sm font-semibold text-slate-700 mb-1 text-left">Access Key</label>
-                    <input type="password" id="username" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all" placeholder="Enter password..." required>
+            <form id="login-form" class="space-y-4">
+                <div class="text-left">
+                    <label class="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Username</label>
+                    <input type="text" id="username" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" placeholder="admin" required>
                 </div>
-                <button type="submit" class="w-full bg-[#00529b] text-white p-4 rounded-xl font-bold hover:bg-blue-800 shadow-lg shadow-blue-100 transition-all active:scale-95">Sign In</button>
+                <div class="text-left">
+                    <label class="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Password</label>
+                    <input type="password" id="password" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" placeholder="••••••••" required>
+                </div>
+                <button type="submit" class="w-full bg-[#00529b] text-white p-4 rounded-xl font-bold hover:bg-blue-800 transition-all shadow-lg active:scale-95 mt-4">Sign In</button>
+                <p id="login-error" class="text-red-500 text-xs font-bold hidden mt-2">Invalid credentials.</p>
             </form>
         </div>
     </div>
 
     <!-- Main App Layout -->
-    <div id="main-app" class="hidden-screen flex flex-col h-screen">
-        <header class="bg-white border-b border-slate-200 px-6 py-2 flex items-center justify-between sticky top-0 z-40 shadow-sm">
-            <div class="flex items-center gap-4">
-                <img src="https://th.bing.com/th/id/OIP.wA3jMn-BDiUda8walzO9xAHaEI?w=290&h=180&c=7&r=0&o=7&pid=1.7&rm=3" 
-                     alt="GV Health" 
-                     class="h-10 w-auto object-contain logo-glow">
-                <div class="h-8 w-px bg-slate-200 hidden md:block"></div>
-                <h2 id="page-title" class="text-slate-800 font-bold tracking-tight text-sm md:text-base hidden md:block">DASHBOARD</h2>
+    <div id="main-app" class="hidden-screen flex flex-col min-h-screen">
+        
+        <header class="app-header shadow-sm">
+            <div class="px-6 py-3 flex items-center justify-between border-b border-slate-100">
+                <div class="flex items-center gap-4">
+                    <img src="https://th.bing.com/th/id/OIP.wA3jMn-BDiUda8walzO9xAHaEI?w=290&h=180&c=7&r=0&o=7&pid=1.7&rm=3" alt="Logo" class="h-8 w-auto">
+                    <h2 class="text-slate-800 font-bold uppercase tracking-tight text-sm border-l pl-4 border-slate-200">Inventory Control</h2>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button onclick="window.prepareEmailDraft()" class="bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-slate-200 transition flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                        Draft Report
+                    </button>
+                    <label class="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-700 transition cursor-pointer flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                        Import CSV
+                        <input type="file" id="csv-import" class="hidden" accept=".csv" onchange="window.handleCSVImport(event)">
+                    </label>
+                    <button onclick="window.handleSignOut()" class="text-slate-400 hover:text-red-500 p-1">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                    </button>
+                </div>
             </div>
-            <div class="flex items-center gap-2">
-                <button onclick="window.showTransitionModal()" class="bg-amber-50 text-amber-700 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-amber-100 transition border border-amber-200">Transition</button>
-                
-                <label class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 transition cursor-pointer flex items-center gap-2 shadow-md shadow-blue-100">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
-                    Import CSV
-                    <input type="file" id="csv-import" class="hidden" accept=".csv" onchange="window.handleCSVImport(event)">
-                </label>
 
-                <div class="h-8 w-px bg-slate-200 mx-2"></div>
+            <div class="px-6 bg-white flex flex-col md:flex-row md:items-center justify-between gap-4 py-2">
+                <nav class="flex gap-6">
+                    <button id="tab-dashboard" onclick="window.switchTab('dashboard')" class="nav-tab active py-2 text-xs uppercase tracking-widest">Overview</button>
+                    <button id="tab-inventory" onclick="window.switchTab('inventory')" class="nav-tab py-2 text-xs uppercase tracking-widest">Inventory List</button>
+                    <button id="tab-settings" onclick="window.switchTab('settings')" class="nav-tab py-2 text-xs uppercase tracking-widest">Management</button>
+                </nav>
                 
-                <button onclick="auth.signOut()" class="text-slate-400 hover:text-red-500 p-2 transition">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
-                </button>
+                <div class="flex items-center gap-2 flex-1 max-w-2xl">
+                    <div class="relative flex-1">
+                        <svg class="w-4 h-4 absolute left-3 top-2.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                        <input type="text" id="search-bar" oninput="window.handleSearch()" placeholder="Search description or supplier..." class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                    </div>
+                    <select id="supplier-filter" onchange="window.handleSearch()" class="w-44 p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                        <option value="">All Suppliers</option>
+                    </select>
+                </div>
             </div>
         </header>
 
-        <nav class="bg-white border-b border-slate-200 px-6 flex gap-8">
-            <button id="tab-dashboard" onclick="window.switchTab('dashboard')" class="nav-tab active py-4 text-sm tracking-wide">Overview</button>
-            <button id="tab-inventory" onclick="window.switchTab('inventory')" class="nav-tab py-4 text-sm tracking-wide">Inventory List</button>
-            <button id="tab-settings" onclick="window.switchTab('settings')" class="nav-tab py-4 text-sm tracking-wide">Management</button>
-        </nav>
-
-        <main class="flex-1 overflow-auto p-4 md:p-8 bg-slate-50/50">
+        <main class="flex-1 p-4 md:p-8">
             <!-- Dashboard View -->
             <section id="view-dashboard" class="space-y-8 max-w-7xl mx-auto">
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                        <span class="text-slate-500 text-sm font-medium">Verified Items</span>
-                        <h3 id="stat-total-items" class="text-4xl font-extrabold text-slate-800">0</h3>
+                        <span class="text-slate-500 text-xs font-bold uppercase tracking-widest">Total Active Items</span>
+                        <h3 id="stat-total-items" class="text-4xl font-black text-slate-800 mt-1">0</h3>
                     </div>
-                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                        <span class="text-slate-500 text-sm font-medium">Price Increases</span>
-                        <h3 id="stat-increases" class="text-4xl font-extrabold text-red-600">0</h3>
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm border-l-4 border-l-red-500">
+                        <span class="text-slate-500 text-xs font-bold uppercase tracking-widest text-red-600">Price Increases</span>
+                        <h3 id="stat-increases" class="text-4xl font-black text-slate-800 mt-1">0</h3>
                     </div>
-                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                        <span class="text-slate-500 text-sm font-medium">Price Decreases</span>
-                        <h3 id="stat-decreases" class="text-4xl font-extrabold text-green-600">0</h3>
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm border-l-4 border-l-green-500">
+                        <span class="text-slate-500 text-xs font-bold uppercase tracking-widest text-green-600">Price Decreases</span>
+                        <h3 id="stat-decreases" class="text-4xl font-black text-slate-800 mt-1">0</h3>
                     </div>
                 </div>
 
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-                        <h4 class="font-bold text-slate-800 mb-4 flex items-center gap-2 text-sm uppercase tracking-wider">Top Increases</h4>
+                        <h4 class="font-bold text-slate-800 mb-4 text-xs uppercase tracking-widest flex items-center justify-between">
+                            Top Surges 
+                            <span class="bg-red-50 text-red-700 px-2 py-0.5 rounded text-[10px]">Action Recommended</span>
+                        </h4>
                         <div id="list-increases" class="space-y-3"></div>
                     </div>
                     <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-                        <h4 class="font-bold text-slate-800 mb-4 flex items-center gap-2 text-sm uppercase tracking-wider">Top Decreases</h4>
+                        <h4 class="font-bold text-slate-800 mb-4 text-xs uppercase tracking-widest">Top Reductions</h4>
                         <div id="list-decreases" class="space-y-3"></div>
                     </div>
                 </div>
             </section>
 
             <!-- Inventory View -->
-            <section id="view-inventory" class="hidden space-y-6 max-w-7xl mx-auto">
-                <div class="flex flex-col md:flex-row gap-4 items-center bg-white p-4 rounded-xl border border-slate-200">
-                    <div class="relative flex-1 w-full">
-                        <svg class="w-5 h-5 absolute left-3 top-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                        <input type="text" id="search-bar" oninput="window.handleSearch()" placeholder="Search Name or Supplier..." class="w-full pl-10 pr-4 py-3 bg-slate-50 border-0 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+            <section id="view-inventory" class="hidden max-w-7xl mx-auto">
+                <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left table-auto">
+                            <thead class="bg-slate-50 text-[10px] font-bold text-slate-500 uppercase tracking-widest border-b">
+                                <tr>
+                                    <th class="px-6 py-4">Supplier</th>
+                                    <th class="px-6 py-4">Item Description</th>
+                                    <th class="px-6 py-4">UOM</th>
+                                    <th class="px-6 py-4">Prev Cost</th>
+                                    <th class="px-6 py-4 text-center">Trend</th>
+                                    <th class="px-6 py-4 w-40">New Cost</th>
+                                </tr>
+                            </thead>
+                            <tbody id="inventory-table-body" class="divide-y divide-slate-100 text-sm"></tbody>
+                        </table>
                     </div>
-                    <select id="supplier-filter" onchange="window.handleSearch()" class="w-full md:w-64 p-3 bg-slate-50 border-0 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 transition-all">
-                        <option value="">All Suppliers</option>
-                    </select>
-                </div>
-                
-                <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm overflow-x-auto">
-                    <table class="w-full text-left">
-                        <thead class="bg-slate-50 text-[10px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100">
-                            <tr>
-                                <th class="px-6 py-4">Supplier</th>
-                                <th class="px-6 py-4">Description</th>
-                                <th class="px-6 py-4">UOM</th>
-                                <th class="px-6 py-4">Prev Cost</th>
-                                <th class="px-6 py-4 text-center">Trend</th>
-                                <th class="px-6 py-4 w-44">New Cost</th>
-                            </tr>
-                        </thead>
-                        <tbody id="inventory-table-body" class="divide-y divide-slate-100 text-sm"></tbody>
-                    </table>
                 </div>
             </section>
 
             <!-- Management View -->
             <section id="view-settings" class="hidden space-y-8 max-w-3xl mx-auto">
                 <div class="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm">
-                    <h4 class="text-xl font-bold text-slate-800 mb-6">Database Management</h4>
-                    <div class="space-y-6">
-                        <div class="flex items-center justify-between p-4 bg-red-50 rounded-xl">
+                    <h4 class="text-xl font-bold text-slate-800 mb-6 text-center">System Settings</h4>
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between p-5 bg-amber-50 rounded-xl border border-amber-100">
                             <div>
-                                <p class="font-bold text-red-700">Clear All Records</p>
-                                <p class="text-xs text-red-500">Removes everything. Use this if the import mapping was wrong.</p>
+                                <p class="font-bold text-amber-900">Transition Cycle</p>
+                                <p class="text-xs text-amber-700">Move all 'New Cost' values to 'Previous Cost'.</p>
                             </div>
-                            <button onclick="window.confirmClearAll()" class="bg-red-600 text-white px-4 py-2 rounded-lg font-bold text-sm">Delete All</button>
+                            <button onclick="window.showTransitionModal()" class="bg-amber-600 text-white px-5 py-2 rounded-lg font-bold text-sm hover:bg-amber-700 transition">Cycle Prices</button>
+                        </div>
+                        <div class="flex items-center justify-between p-5 bg-red-50 rounded-xl border border-red-100">
+                            <div>
+                                <p class="font-bold text-red-900">Clear All Records</p>
+                                <p class="text-xs text-red-700">Irreversibly wipe the entire database.</p>
+                            </div>
+                            <button onclick="window.confirmClearAll()" class="bg-red-600 text-white px-5 py-2 rounded-lg font-bold text-sm hover:bg-red-700 transition">Wipe Data</button>
                         </div>
                     </div>
                 </div>
@@ -149,38 +185,49 @@
     </div>
 
     <!-- Modals -->
-    <div id="modal-container" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 px-4">
-        <div id="modal-transition" class="hidden bg-white rounded-2xl p-8 max-w-sm w-full">
-            <h3 class="text-xl font-bold mb-2">Cycle Prices</h3>
-            <p class="text-sm text-slate-500 mb-6">Current 'New Cost' values will move to 'Previous Cost'.</p>
+    <div id="modal-container" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100] px-4">
+        <div id="modal-transition" class="hidden bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl">
+            <h3 class="text-xl font-bold mb-2 text-center">Cycle Prices?</h3>
+            <p class="text-sm text-slate-500 mb-6 text-center">This will move all current prices to the history column.</p>
             <div class="flex gap-3">
                 <button onclick="window.closeModals()" class="flex-1 py-3 bg-slate-100 rounded-xl font-bold">Cancel</button>
                 <button onclick="window.performDailyTransition()" class="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold">Confirm</button>
             </div>
         </div>
-        <div id="modal-clear" class="hidden bg-white rounded-2xl p-8 max-w-sm w-full">
-            <h3 class="text-xl font-bold mb-2">Wipe Database</h3>
-            <p class="text-sm text-slate-500 mb-6">Are you sure? This cannot be undone.</p>
+
+        <div id="modal-email" class="hidden bg-white rounded-2xl p-8 max-w-2xl w-full max-h-[80vh] flex flex-col shadow-2xl">
+            <h3 class="text-xl font-bold mb-2">Variance Report Draft</h3>
+            <div id="email-content" class="flex-1 overflow-auto bg-slate-900 text-green-400 p-6 rounded-xl text-[11px] font-mono whitespace-pre-wrap mb-6"></div>
+            <div class="flex gap-3">
+                <button onclick="window.closeModals()" class="flex-1 py-3 bg-slate-100 rounded-xl font-bold">Close</button>
+                <button onclick="window.copyEmailToClipboard()" class="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold">Copy to Clipboard</button>
+            </div>
+        </div>
+
+        <div id="modal-clear" class="hidden bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl">
+            <h3 class="text-xl font-bold mb-2 text-red-600 text-center">Delete Everything?</h3>
+            <p class="text-sm text-slate-500 mb-6 text-center">This action cannot be undone.</p>
             <div class="flex gap-3">
                 <button onclick="window.closeModals()" class="flex-1 py-3 bg-slate-100 rounded-xl font-bold">Cancel</button>
-                <button onclick="window.executeClearAll()" class="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold">Wipe</button>
+                <button onclick="window.executeClearAll()" class="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold">Yes, Delete</button>
             </div>
         </div>
     </div>
 
-    <div id="process-loader" class="hidden fixed inset-0 bg-white/90 flex flex-col items-center justify-center z-[60]">
-        <div class="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-        <p id="loader-text" class="mt-4 font-bold text-slate-800">Reading CSV Structure...</p>
+    <!-- UI Overlay Utilities -->
+    <div id="process-loader" class="hidden fixed inset-0 bg-white/95 flex flex-col items-center justify-center z-[110]">
+        <div class="spinner"></div>
+        <p id="loader-text" class="mt-4 font-bold text-slate-800 text-sm tracking-widest uppercase text-center">Syncing Database...</p>
     </div>
 
-    <div id="toast" class="toast fixed bottom-8 left-1/2 bg-slate-900 text-white px-8 py-4 rounded-2xl shadow-2xl z-[100] font-bold text-sm">
+    <div id="toast" class="toast fixed bottom-8 left-1/2 bg-slate-900 text-white px-8 py-4 rounded-2xl shadow-2xl z-[200] font-bold text-sm">
         <span id="toast-text">Success</span>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, collection, onSnapshot, writeBatch, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, collection, onSnapshot, writeBatch, updateDoc, setDoc, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
             apiKey: "AIzaSyDnIdmes4eSUw2weldqlg5RGrx169YSDrk",
@@ -194,10 +241,239 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'gv-inventory-system';
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'gv-inventory-system-final';
 
         window.inventory = [];
         let unsubscribe = null;
+        let currentUser = null;
+
+        const cleanPrice = (val) => {
+            if (val === undefined || val === null || val === '') return 0;
+            if (typeof val === 'number') return val;
+            const match = val.toString().replace(/[$,\s]/g, '').match(/\d+\.?\d*/);
+            return match ? parseFloat(match[0]) : 0;
+        };
+
+        // --- AUTH ---
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const u = document.getElementById('username').value.toLowerCase();
+            const p = document.getElementById('password').value;
+            if (u === 'admin' && p === 'gvhealth123') {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } else {
+                document.getElementById('login-error').classList.remove('hidden');
+            }
+        });
+
+        onAuthStateChanged(auth, (user) => {
+            currentUser = user;
+            if (user) {
+                document.getElementById('login-screen').classList.add('hidden-screen');
+                document.getElementById('main-app').classList.remove('hidden-screen');
+                window.refreshData(user);
+            } else {
+                document.getElementById('login-screen').classList.remove('hidden-screen');
+                document.getElementById('main-app').classList.add('hidden-screen');
+            }
+        });
+
+        window.handleSignOut = () => signOut(auth);
+
+        // --- DATA SYNC ---
+        window.refreshData = (user) => {
+            if (!user) return;
+            const stockCol = collection(db, 'artifacts', appId, 'public', 'data', 'stock');
+            if (unsubscribe) unsubscribe();
+            
+            unsubscribe = onSnapshot(stockCol, (snap) => {
+                window.inventory = snap.docs.map(doc => ({ 
+                    docId: doc.id, 
+                    ...doc.data() 
+                }));
+                updateDashboard();
+                updateSupplierFilter();
+                window.handleSearch();
+            }, (err) => {
+                window.showToast("Connection Error");
+            });
+        };
+
+        const updateDashboard = () => {
+            document.getElementById('stat-total-items').innerText = window.inventory.length;
+            const movements = window.inventory.map(i => ({ ...i, diff: (i.currentPrice || 0) - (i.previousPrice || 0) }))
+                .filter(i => Math.abs(i.diff) > 0.001);
+
+            document.getElementById('stat-increases').innerText = movements.filter(m => m.diff > 0.001).length;
+            document.getElementById('stat-decreases').innerText = movements.filter(m => m.diff < -0.001).length;
+
+            const sortedInc = [...movements].sort((a, b) => b.diff - a.diff).slice(0, 5);
+            const sortedDec = [...movements].sort((a, b) => a.diff - b.diff).slice(0, 5);
+
+            const renderM = (items, color) => items.length ? items.map(i => `
+                <div class="flex justify-between p-3 text-[11px] border-b border-slate-50 items-center bg-slate-50/50 rounded-lg">
+                    <span class="truncate font-bold text-slate-700 max-w-[200px]">${i.description}</span>
+                    <span class="${color} font-black">${i.diff > 0 ? '+' : ''}$${i.diff.toFixed(2)}</span>
+                </div>`).join('') : '<p class="text-slate-300 text-center py-4 text-xs italic">No changes</p>';
+            
+            document.getElementById('list-increases').innerHTML = renderM(sortedInc, 'text-red-600');
+            document.getElementById('list-decreases').innerHTML = renderM(sortedDec, 'text-green-600');
+        };
+
+        window.handleSearch = () => {
+            const q = document.getElementById('search-bar').value.toLowerCase();
+            const filter = document.getElementById('supplier-filter').value;
+            const filtered = window.inventory.filter(i => {
+                const desc = (i.description || '').toLowerCase();
+                const supp = (i.supplier || '').toLowerCase();
+                const matchesSearch = desc.includes(q) || supp.includes(q);
+                return matchesSearch && (!filter || i.supplier === filter);
+            }).sort((a,b) => (a.description || '').localeCompare(b.description || ''));
+            renderTable(filtered);
+        };
+
+        const renderTable = (items) => {
+            const body = document.getElementById('inventory-table-body');
+            body.innerHTML = items.length ? items.map(i => {
+                const prev = Number(i.previousPrice || 0);
+                const curr = Number(i.currentPrice || 0);
+                const diff = curr - prev;
+                const perc = prev > 0 ? ((diff / prev) * 100) : 0;
+                return `
+                <tr class="hover:bg-slate-50/80 transition-colors">
+                    <td class="px-6 py-4"><span class="bg-blue-50 text-blue-700 px-2 py-1 rounded text-[10px] font-bold border border-blue-100">${i.supplier}</span></td>
+                    <td class="px-6 py-4 font-bold text-slate-800">${i.description}</td>
+                    <td class="px-6 py-4 text-slate-400 text-xs">${i.uom || '-'}</td>
+                    <td class="px-6 py-4 font-mono">$${prev.toFixed(2)}</td>
+                    <td class="px-6 py-4 text-center">
+                        <span class="${diff > 0.001 ? 'text-red-600' : (diff < -0.001 ? 'text-green-600' : 'text-slate-300')} font-black">
+                            ${diff > 0.001 ? '▲' : (diff < -0.001 ? '▼' : '▬')} 
+                            <span class="text-[10px] ml-1">${Math.abs(perc).toFixed(1)}%</span>
+                        </span>
+                    </td>
+                    <td class="px-6 py-4">
+                        <input type="number" step="0.01" class="w-full p-2 border border-slate-200 rounded text-sm focus:ring-2 focus:ring-blue-500 outline-none" 
+                        value="${curr.toFixed(2)}" onchange="window.updatePrice('${i.docId}', this.value)">
+                    </td>
+                </tr>`;
+            }).join('') : '<tr><td colspan="6" class="p-20 text-center text-slate-400 italic">No records found.</td></tr>';
+        };
+
+        window.updatePrice = async (docId, val) => {
+            if (!currentUser) return;
+            try { 
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'stock', docId), { 
+                    currentPrice: cleanPrice(val),
+                    lastUpdated: Date.now()
+                }); 
+                window.showToast("Updated");
+            } catch (e) { window.showToast("Update Failed"); }
+        };
+
+        // --- SMART CSV IMPORT ---
+        window.handleCSVImport = (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const content = e.target.result;
+                const lines = content.split(/\r?\n/).filter(l => l.trim().length > 0);
+                if (lines.length < 2) return;
+                
+                document.getElementById('process-loader').classList.remove('hidden');
+                document.getElementById('loader-text').innerText = "Processing File...";
+
+                try {
+                    // Simple CSV Splitter
+                    const splitRow = (str) => {
+                        const parts = [];
+                        let cur = "";
+                        let inQ = false;
+                        for (let char of str) {
+                            if (char === '"') inQ = !inQ;
+                            else if (char === ',' && !inQ) { parts.push(cur.trim()); cur = ""; }
+                            else cur += char;
+                        }
+                        parts.push(cur.trim());
+                        return parts;
+                    };
+
+                    const headers = splitRow(lines[0]).map(h => h.toLowerCase());
+                    
+                    // Column Detection
+                    const findCol = (keys) => headers.findIndex(h => keys.some(k => h.includes(k)));
+                    const idx = {
+                        desc: findCol(['desc', 'item', 'name']),
+                        supp: findCol(['supp', 'vendor']),
+                        uom: findCol(['uom', 'unit', 'pack']),
+                        prev: findCol(['prev', 'old', 'cost1']),
+                        curr: findCol(['curr', 'new', 'cost2', 'price'])
+                    };
+
+                    // Fallback to basic indices if detection fails
+                    if (idx.desc === -1) idx.desc = 0;
+                    if (idx.supp === -1) idx.supp = 1;
+                    if (idx.uom === -1) idx.uom = 2;
+                    if (idx.prev === -1) idx.prev = 3;
+                    if (idx.curr === -1) idx.curr = 4;
+
+                    let batch = writeBatch(db);
+                    let count = 0;
+
+                    for (let i = 1; i < lines.length; i++) {
+                        const cols = splitRow(lines[i]);
+                        if (cols.length < 2) continue;
+
+                        const description = cols[idx.desc] || "Unknown Item";
+                        const supplier = cols[idx.supp] || "Other";
+                        const uom = cols[idx.uom] || "";
+                        const pCost = cleanPrice(cols[idx.prev]);
+                        const cCost = cleanPrice(cols[idx.curr]);
+
+                        // Use a hash of description + supplier as ID to ensure items are unique 
+                        // but can be updated by re-importing same file
+                        const rawId = `${supplier}_${description}`.toLowerCase().replace(/[^a-z0-9]/g, '_');
+                        
+                        batch.set(doc(db, 'artifacts', appId, 'public', 'data', 'stock', rawId), {
+                            description,
+                            supplier,
+                            uom,
+                            previousPrice: pCost,
+                            currentPrice: cCost,
+                            lastUpdated: Date.now()
+                        }, { merge: true });
+
+                        count++;
+                        if (count % 450 === 0) {
+                            await batch.commit();
+                            batch = writeBatch(db);
+                        }
+                    }
+
+                    await batch.commit();
+                    window.showToast(`Imported ${count} items`);
+                } catch (err) {
+                    console.error(err);
+                    window.showToast("Import Error");
+                } finally {
+                    document.getElementById('process-loader').classList.add('hidden');
+                    event.target.value = '';
+                }
+            };
+            reader.readAsText(file);
+        };
+
+        // --- NAVIGATION & MODALS ---
+        window.switchTab = (tab) => {
+            ['dashboard', 'inventory', 'settings'].forEach(t => {
+                document.getElementById(`view-${t}`).classList.toggle('hidden', t !== tab);
+                document.getElementById(`tab-${t}`).classList.toggle('active', t === tab);
+            });
+        };
 
         window.showToast = (msg) => {
             const t = document.getElementById('toast');
@@ -208,8 +484,9 @@
 
         window.closeModals = () => {
             document.getElementById('modal-container').classList.add('hidden');
-            document.getElementById('modal-transition').classList.add('hidden');
-            document.getElementById('modal-clear').classList.add('hidden');
+            ['modal-transition', 'modal-email', 'modal-clear'].forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+            });
         };
 
         window.showTransitionModal = () => {
@@ -222,205 +499,94 @@
             document.getElementById('modal-clear').classList.remove('hidden');
         };
 
-        window.refreshData = (user) => {
-            if (!user) return;
-            const stockCol = collection(db, 'artifacts', appId, 'public', 'data', 'stock');
-            if (unsubscribe) unsubscribe();
-            
-            unsubscribe = onSnapshot(stockCol, (snap) => {
-                window.inventory = snap.docs.map(doc => ({ docId: doc.id, ...doc.data() }));
-                updateDashboard();
-                updateSupplierFilter();
-                window.handleSearch();
-            });
-        };
-
-        const updateDashboard = () => {
-            document.getElementById('stat-total-items').innerText = window.inventory.length;
-            const movements = window.inventory.map(i => ({
-                ...i,
-                diff: Number(i.currentPrice || 0) - Number(i.previousPrice || 0)
-            })).filter(i => i.diff !== 0);
-
-            document.getElementById('stat-increases').innerText = movements.filter(m => m.diff > 0).length;
-            document.getElementById('stat-decreases').innerText = movements.filter(m => m.diff < 0).length;
-
-            const sortedInc = [...movements].sort((a, b) => b.diff - a.diff).slice(0, 5);
-            const sortedDec = [...movements].sort((a, b) => a.diff - b.diff).slice(0, 5);
-
-            const renderM = (items, color) => {
-                if(!items.length) return `<p class="text-slate-300 text-xs text-center py-4 italic">No movements</p>`;
-                return items.map(i => `
-                    <div class="flex justify-between p-2 text-xs border-b border-slate-50">
-                        <span class="truncate pr-4 font-semibold">${i.description}</span>
-                        <span class="${color} font-black">$${Math.abs(i.diff).toFixed(2)}</span>
-                    </div>`).join('');
-            };
-            document.getElementById('list-increases').innerHTML = renderM(sortedInc, 'text-red-600');
-            document.getElementById('list-decreases').innerHTML = renderM(sortedDec, 'text-green-600');
-        };
-
-        window.handleSearch = () => {
-            const q = document.getElementById('search-bar').value.toLowerCase();
-            const filter = document.getElementById('supplier-filter').value;
-            const filtered = window.inventory.filter(i => {
-                const matchesSearch = (i.description || '').toLowerCase().includes(q) || (i.supplier || '').toLowerCase().includes(q);
-                return matchesSearch && (filter === '' || i.supplier === filter);
-            });
-            renderTable(filtered);
-        };
-
-        const renderTable = (items) => {
-            const body = document.getElementById('inventory-table-body');
-            body.innerHTML = items.map(i => {
-                const prev = Number(i.previousPrice || 0);
-                const curr = Number(i.currentPrice || 0);
-                return `
-                <tr class="hover:bg-slate-50/50">
-                    <td class="px-6 py-4"><span class="bg-slate-100 px-2 py-1 rounded text-[9px] font-bold uppercase">${i.supplier || '-'}</span></td>
-                    <td class="px-6 py-4 font-semibold text-slate-800">${i.description || '-'}</td>
-                    <td class="px-6 py-4 text-slate-400">${i.uom || '-'}</td>
-                    <td class="px-6 py-4 text-slate-400 font-mono font-bold">$${prev.toFixed(2)}</td>
-                    <td class="px-6 py-4 text-center font-bold ${curr > prev ? 'text-red-600' : (curr < prev ? 'text-green-600' : 'text-slate-300')}">${curr > prev ? '▲' : (curr < prev ? '▼' : '▬')}</td>
-                    <td class="px-6 py-4">
-                        <input type="number" step="0.01" class="w-full p-2 border border-slate-200 rounded text-sm" value="${curr.toFixed(2)}" 
-                        onchange="window.updatePrice('${i.docId}', this.value)">
-                    </td>
-                </tr>`}).join('');
-        };
-
-        window.updatePrice = async (docId, val) => {
-            try { 
-                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'stock', docId), { currentPrice: Number(val) || 0 }); 
-                window.showToast("Saved Locally"); 
-            } catch (e) { window.showToast("Save Failed"); }
-        };
-
         window.performDailyTransition = async () => {
+            if (window.inventory.length === 0) return;
             window.closeModals();
             document.getElementById('process-loader').classList.remove('hidden');
             try {
-                for (let i = 0; i < window.inventory.length; i += 400) {
-                    const batch = writeBatch(db);
-                    window.inventory.slice(i, i + 400).forEach(item => {
-                        batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'stock', item.docId), { previousPrice: Number(item.currentPrice) || 0 });
+                let batch = writeBatch(db);
+                let count = 0;
+                for (const item of window.inventory) {
+                    batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'stock', item.docId), { 
+                        previousPrice: Number(item.currentPrice || 0) 
                     });
-                    await batch.commit();
+                    count++;
+                    if (count % 450 === 0) {
+                        await batch.commit();
+                        batch = writeBatch(db);
+                    }
                 }
-                window.showToast("Daily Cycle Complete");
-            } finally { document.getElementById('process-loader').classList.add('hidden'); }
+                await batch.commit();
+                window.showToast("Prices Cycled");
+            } catch (e) {
+                window.showToast("Cycle Failed");
+            } finally {
+                document.getElementById('process-loader').classList.add('hidden');
+            }
         };
 
         window.executeClearAll = async () => {
             window.closeModals();
             document.getElementById('process-loader').classList.remove('hidden');
             try {
-                for (let i = 0; i < window.inventory.length; i += 400) {
-                    const batch = writeBatch(db);
-                    window.inventory.slice(i, i + 400).forEach(item => batch.delete(doc(db, 'artifacts', appId, 'public', 'data', 'stock', item.docId)));
-                    await batch.commit();
+                const querySnapshot = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'stock'));
+                let batch = writeBatch(db);
+                let count = 0;
+                for (const d of querySnapshot.docs) {
+                    batch.delete(d.ref);
+                    count++;
+                    if (count % 450 === 0) {
+                        await batch.commit();
+                        batch = writeBatch(db);
+                    }
                 }
+                await batch.commit();
                 window.showToast("Database Cleared");
-            } finally { document.getElementById('process-loader').classList.add('hidden'); }
+            } catch (e) {
+                window.showToast("Clear Failed");
+            } finally {
+                document.getElementById('process-loader').classList.add('hidden');
+            }
         };
 
-        window.handleCSVImport = (event) => {
-            const file = event.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = async (e) => {
-                const rows = e.target.result.split('\n').map(r => r.trim()).filter(r => r.length > 0);
-                document.getElementById('process-loader').classList.remove('hidden');
-                
-                try {
-                    // Start from index 1 to skip header: 
-                    // Expected Format: Cost Centre, Subj., Supplier, Code, Description, UOM, Previous Cost, New Cost...
-                    for (let i = 1; i < rows.length; i += 400) {
-                        const batch = writeBatch(db);
-                        rows.slice(i, i + 400).forEach(rowStr => {
-                            const cols = rowStr.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-                            
-                            // STRICT MAPPING
-                            const supplier = (cols[2] || '').trim().replace(/^"|"$/g, '');
-                            const description = (cols[4] || '').trim().replace(/^"|"$/g, '');
-                            const uom = (cols[5] || '').trim().replace(/^"|"$/g, '');
-                            
-                            const prevCostRaw = (cols[6] || '0').replace(/[^0-9.]/g, '');
-                            const newCostRaw = (cols[7] || '0').replace(/[^0-9.]/g, '');
-                            
-                            const prevPrice = Number(prevCostRaw) || 0;
-                            const newPrice = Number(newCostRaw) || 0;
+        window.prepareEmailDraft = () => {
+            const changes = window.inventory.filter(i => Math.abs((i.currentPrice || 0) - (i.previousPrice || 0)) > 0.001);
+            if (!changes.length) return window.showToast("No variances detected");
+            
+            let body = `GV HEALTH - PRICE VARIANCE REPORT\nDATE: ${new Date().toLocaleDateString()}\n\n`;
+            body += `ITEM`.padEnd(35) + ` | ` + `SUPPLIER`.padEnd(15) + ` | ` + `CHANGE\n`;
+            body += `-`.repeat(65) + `\n`;
+            
+            changes.forEach(i => {
+                const diff = (i.currentPrice || 0) - (i.previousPrice || 0);
+                body += `${(i.description || '').substring(0,33).padEnd(35)} | ${(i.supplier || '').substring(0,13).padEnd(15)} | ${diff > 0 ? '+' : ''}$${diff.toFixed(2)}\n`;
+            });
 
-                            // Skip if it's the header or empty row
-                            if (supplier && description && supplier.toLowerCase() !== 'supplier') {
-                                // UNIQUE KEY: Supplier + Clean Description + UOM
-                                const uniqueStr = `${supplier}_${description}_${uom}`.toLowerCase().replace(/[^a-z0-9]/g, '');
-                                const id = btoa(unescape(encodeURIComponent(uniqueStr))).replace(/[/+=]/g, '');
+            document.getElementById('email-content').innerText = body;
+            document.getElementById('modal-container').classList.remove('hidden');
+            document.getElementById('modal-email').classList.remove('hidden');
+        };
 
-                                batch.set(doc(db, 'artifacts', appId, 'public', 'data', 'stock', id), { 
-                                    supplier: supplier, 
-                                    description: description, 
-                                    uom: uom, 
-                                    previousPrice: prevPrice, 
-                                    currentPrice: newPrice 
-                                }, { merge: true });
-                            }
-                        });
-                        await batch.commit();
-                    }
-                    window.showToast("Import Complete - 10 Column Map Verified");
-                } catch (err) {
-                    console.error(err);
-                    window.showToast("Import Error");
-                } finally { document.getElementById('process-loader').classList.add('hidden'); }
-            };
-            reader.readAsText(file);
+        window.copyEmailToClipboard = () => {
+            const text = document.getElementById('email-content').innerText;
+            const el = document.createElement('textarea');
+            el.value = text;
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+            window.showToast("Report Copied!");
         };
 
         const updateSupplierFilter = () => {
             const select = document.getElementById('supplier-filter');
-            const suppliers = [...new Set(window.inventory.map(i => i.supplier))].sort();
-            select.innerHTML = `<option value="">All Suppliers</option>` + 
-                suppliers.map(s => `<option value="${s}">${s}</option>`).join('');
+            const currentVal = select.value;
+            const unique = [...new Set(window.inventory.map(i => i.supplier).filter(Boolean))].sort();
+            select.innerHTML = '<option value="">All Suppliers</option>' + 
+                unique.map(s => `<option value="${s}">${s}</option>`).join('');
+            select.value = currentVal;
         };
 
-        window.switchTab = (tab) => {
-            ['dashboard', 'inventory', 'settings'].forEach(t => {
-                const el = document.getElementById(`view-${t}`);
-                if (el) el.classList.toggle('hidden', t !== tab);
-                const btn = document.getElementById(`tab-${t}`);
-                if (btn) btn.classList.toggle('active', t === tab);
-            });
-            document.getElementById('page-title').innerText = tab.toUpperCase();
-        };
-
-        const initAuth = async () => {
-            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                try {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                    return;
-                } catch (e) { console.error(e); }
-            }
-            await signInAnonymously(auth);
-        };
-
-        document.getElementById('login-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            await signInAnonymously(auth);
-        });
-
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                document.getElementById('login-screen').classList.add('hidden-screen');
-                document.getElementById('main-app').classList.remove('hidden-screen');
-                window.refreshData(user);
-            } else {
-                document.getElementById('login-screen').classList.remove('hidden-screen');
-                document.getElementById('main-app').classList.add('hidden-screen');
-            }
-        });
-
-        initAuth();
     </script>
 </body>
 </html>
