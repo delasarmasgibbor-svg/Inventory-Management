@@ -96,7 +96,7 @@
                 <div class="flex items-center gap-2 flex-1 max-w-2xl">
                     <div class="relative flex-1">
                         <svg class="w-4 h-4 absolute left-3 top-2.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                        <input type="text" id="search-bar" oninput="window.handleSearch()" placeholder="Search description or supplier..." class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                        <input type="text" id="search-bar" oninput="window.handleSearch()" placeholder="Search UID, description or supplier..." class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all">
                     </div>
                     <select id="supplier-filter" onchange="window.handleSearch()" class="w-44 p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all">
                         <option value="">All Suppliers</option>
@@ -145,9 +145,9 @@
                         <table class="w-full text-left table-auto">
                             <thead class="bg-slate-50 text-[10px] font-bold text-slate-500 uppercase tracking-widest border-b">
                                 <tr>
+                                    <th class="px-6 py-4">UID</th>
                                     <th class="px-6 py-4">Supplier</th>
-                                    <th class="px-6 py-4">Item Description</th>
-                                    <th class="px-6 py-4">UOM</th>
+                                    <th class="px-6 py-4">Description</th>
                                     <th class="px-6 py-4">Prev Cost</th>
                                     <th class="px-6 py-4 text-center">Trend</th>
                                     <th class="px-6 py-4 w-40">New Cost</th>
@@ -241,7 +241,7 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'gv-inventory-system-final';
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'gv-inventory-system-pro';
 
         window.inventory = [];
         let unsubscribe = null;
@@ -260,10 +260,14 @@
             const u = document.getElementById('username').value.toLowerCase();
             const p = document.getElementById('password').value;
             if (u === 'admin' && p === 'gvhealth123') {
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
+                try {
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                } catch (err) {
+                    window.showToast("Connection Error");
                 }
             } else {
                 document.getElementById('login-error').classList.remove('hidden');
@@ -292,14 +296,14 @@
             
             unsubscribe = onSnapshot(stockCol, (snap) => {
                 window.inventory = snap.docs.map(doc => ({ 
-                    docId: doc.id, 
+                    uid: doc.id, 
                     ...doc.data() 
                 }));
                 updateDashboard();
                 updateSupplierFilter();
                 window.handleSearch();
             }, (err) => {
-                window.showToast("Connection Error");
+                window.showToast("Database Permission Denied");
             });
         };
 
@@ -315,8 +319,11 @@
             const sortedDec = [...movements].sort((a, b) => a.diff - b.diff).slice(0, 5);
 
             const renderM = (items, color) => items.length ? items.map(i => `
-                <div class="flex justify-between p-3 text-[11px] border-b border-slate-50 items-center bg-slate-50/50 rounded-lg">
-                    <span class="truncate font-bold text-slate-700 max-w-[200px]">${i.description}</span>
+                <div class="flex justify-between p-3 text-[10px] border-b border-slate-50 items-center bg-slate-50/50 rounded-lg">
+                    <div>
+                        <span class="block text-slate-400 font-mono text-[9px] uppercase">${i.uid}</span>
+                        <span class="truncate font-bold text-slate-700 max-w-[150px]">${i.description}</span>
+                    </div>
                     <span class="${color} font-black">${i.diff > 0 ? '+' : ''}$${i.diff.toFixed(2)}</span>
                 </div>`).join('') : '<p class="text-slate-300 text-center py-4 text-xs italic">No changes</p>';
             
@@ -330,7 +337,8 @@
             const filtered = window.inventory.filter(i => {
                 const desc = (i.description || '').toLowerCase();
                 const supp = (i.supplier || '').toLowerCase();
-                const matchesSearch = desc.includes(q) || supp.includes(q);
+                const uid = (i.uid || '').toLowerCase();
+                const matchesSearch = desc.includes(q) || supp.includes(q) || uid.includes(q);
                 return matchesSearch && (!filter || i.supplier === filter);
             }).sort((a,b) => (a.description || '').localeCompare(b.description || ''));
             renderTable(filtered);
@@ -345,9 +353,9 @@
                 const perc = prev > 0 ? ((diff / prev) * 100) : 0;
                 return `
                 <tr class="hover:bg-slate-50/80 transition-colors">
+                    <td class="px-6 py-4 font-mono text-[10px] text-slate-400 font-bold uppercase">${i.uid}</td>
                     <td class="px-6 py-4"><span class="bg-blue-50 text-blue-700 px-2 py-1 rounded text-[10px] font-bold border border-blue-100">${i.supplier}</span></td>
                     <td class="px-6 py-4 font-bold text-slate-800">${i.description}</td>
-                    <td class="px-6 py-4 text-slate-400 text-xs">${i.uom || '-'}</td>
                     <td class="px-6 py-4 font-mono">$${prev.toFixed(2)}</td>
                     <td class="px-6 py-4 text-center">
                         <span class="${diff > 0.001 ? 'text-red-600' : (diff < -0.001 ? 'text-green-600' : 'text-slate-300')} font-black">
@@ -357,16 +365,16 @@
                     </td>
                     <td class="px-6 py-4">
                         <input type="number" step="0.01" class="w-full p-2 border border-slate-200 rounded text-sm focus:ring-2 focus:ring-blue-500 outline-none" 
-                        value="${curr.toFixed(2)}" onchange="window.updatePrice('${i.docId}', this.value)">
+                        value="${curr.toFixed(2)}" onchange="window.updatePrice('${i.uid}', this.value)">
                     </td>
                 </tr>`;
             }).join('') : '<tr><td colspan="6" class="p-20 text-center text-slate-400 italic">No records found.</td></tr>';
         };
 
-        window.updatePrice = async (docId, val) => {
+        window.updatePrice = async (uid, val) => {
             if (!currentUser) return;
             try { 
-                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'stock', docId), { 
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'stock', uid), { 
                     currentPrice: cleanPrice(val),
                     lastUpdated: Date.now()
                 }); 
@@ -385,10 +393,9 @@
                 if (lines.length < 2) return;
                 
                 document.getElementById('process-loader').classList.remove('hidden');
-                document.getElementById('loader-text').innerText = "Processing File...";
+                document.getElementById('loader-text').innerText = "Analyzing Inventory File...";
 
                 try {
-                    // Simple CSV Splitter
                     const splitRow = (str) => {
                         const parts = [];
                         let cur = "";
@@ -403,23 +410,20 @@
                     };
 
                     const headers = splitRow(lines[0]).map(h => h.toLowerCase());
-                    
-                    // Column Detection
                     const findCol = (keys) => headers.findIndex(h => keys.some(k => h.includes(k)));
+                    
                     const idx = {
                         desc: findCol(['desc', 'item', 'name']),
                         supp: findCol(['supp', 'vendor']),
-                        uom: findCol(['uom', 'unit', 'pack']),
                         prev: findCol(['prev', 'old', 'cost1']),
                         curr: findCol(['curr', 'new', 'cost2', 'price'])
                     };
 
-                    // Fallback to basic indices if detection fails
+                    // Fallbacks
                     if (idx.desc === -1) idx.desc = 0;
                     if (idx.supp === -1) idx.supp = 1;
-                    if (idx.uom === -1) idx.uom = 2;
-                    if (idx.prev === -1) idx.prev = 3;
-                    if (idx.curr === -1) idx.curr = 4;
+                    if (idx.prev === -1) idx.prev = 2;
+                    if (idx.curr === -1) idx.curr = 3;
 
                     let batch = writeBatch(db);
                     let count = 0;
@@ -430,18 +434,14 @@
 
                         const description = cols[idx.desc] || "Unknown Item";
                         const supplier = cols[idx.supp] || "Other";
-                        const uom = cols[idx.uom] || "";
                         const pCost = cleanPrice(cols[idx.prev]);
                         const cCost = cleanPrice(cols[idx.curr]);
 
-                        // Use a hash of description + supplier as ID to ensure items are unique 
-                        // but can be updated by re-importing same file
-                        const rawId = `${supplier}_${description}`.toLowerCase().replace(/[^a-z0-9]/g, '_');
+                        const rawId = `${supplier}_${description}`.toLowerCase().replace(/[^a-z0-9]/g, '_').substring(0, 50);
                         
                         batch.set(doc(db, 'artifacts', appId, 'public', 'data', 'stock', rawId), {
                             description,
                             supplier,
-                            uom,
                             previousPrice: pCost,
                             currentPrice: cCost,
                             lastUpdated: Date.now()
@@ -455,10 +455,9 @@
                     }
 
                     await batch.commit();
-                    window.showToast(`Imported ${count} items`);
+                    window.showToast(`Successfully synced ${count} items`);
                 } catch (err) {
-                    console.error(err);
-                    window.showToast("Import Error");
+                    window.showToast("Import failed");
                 } finally {
                     document.getElementById('process-loader').classList.add('hidden');
                     event.target.value = '';
@@ -467,7 +466,6 @@
             reader.readAsText(file);
         };
 
-        // --- NAVIGATION & MODALS ---
         window.switchTab = (tab) => {
             ['dashboard', 'inventory', 'settings'].forEach(t => {
                 document.getElementById(`view-${t}`).classList.toggle('hidden', t !== tab);
@@ -507,7 +505,7 @@
                 let batch = writeBatch(db);
                 let count = 0;
                 for (const item of window.inventory) {
-                    batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'stock', item.docId), { 
+                    batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'stock', item.uid), { 
                         previousPrice: Number(item.currentPrice || 0) 
                     });
                     count++;
@@ -517,12 +515,9 @@
                     }
                 }
                 await batch.commit();
-                window.showToast("Prices Cycled");
-            } catch (e) {
-                window.showToast("Cycle Failed");
-            } finally {
-                document.getElementById('process-loader').classList.add('hidden');
-            }
+                window.showToast("Cycle Complete");
+            } catch (e) { window.showToast("Cycle Failed"); }
+            finally { document.getElementById('process-loader').classList.add('hidden'); }
         };
 
         window.executeClearAll = async () => {
@@ -541,12 +536,9 @@
                     }
                 }
                 await batch.commit();
-                window.showToast("Database Cleared");
-            } catch (e) {
-                window.showToast("Clear Failed");
-            } finally {
-                document.getElementById('process-loader').classList.add('hidden');
-            }
+                window.showToast("Database Wiped");
+            } catch (e) { window.showToast("Wipe Failed"); }
+            finally { document.getElementById('process-loader').classList.add('hidden'); }
         };
 
         window.prepareEmailDraft = () => {
@@ -554,12 +546,12 @@
             if (!changes.length) return window.showToast("No variances detected");
             
             let body = `GV HEALTH - PRICE VARIANCE REPORT\nDATE: ${new Date().toLocaleDateString()}\n\n`;
-            body += `ITEM`.padEnd(35) + ` | ` + `SUPPLIER`.padEnd(15) + ` | ` + `CHANGE\n`;
+            body += `UID`.padEnd(15) + ` | ` + `ITEM`.padEnd(30) + ` | ` + `CHANGE\n`;
             body += `-`.repeat(65) + `\n`;
             
             changes.forEach(i => {
                 const diff = (i.currentPrice || 0) - (i.previousPrice || 0);
-                body += `${(i.description || '').substring(0,33).padEnd(35)} | ${(i.supplier || '').substring(0,13).padEnd(15)} | ${diff > 0 ? '+' : ''}$${diff.toFixed(2)}\n`;
+                body += `${(i.uid || '').padEnd(15)} | ${(i.description || '').substring(0,28).padEnd(30)} | ${diff > 0 ? '+' : ''}$${diff.toFixed(2)}\n`;
             });
 
             document.getElementById('email-content').innerText = body;
@@ -586,7 +578,6 @@
                 unique.map(s => `<option value="${s}">${s}</option>`).join('');
             select.value = currentVal;
         };
-
     </script>
 </body>
 </html>
